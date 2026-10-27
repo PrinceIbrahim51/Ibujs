@@ -1,0 +1,12 @@
+{
+  "name": "@ibujs/cli",
+  "version": "0.5.0",
+  "type": "module",
+  "bin": {
+    "ibu": "./src/cli.mjs"
+  },
+  "dependencies": {
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.0"
+  }
+}
