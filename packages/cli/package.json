@@ -1,12 +1,15 @@
 {
   "name": "@ibujs/cli",
-  "version": "0.5.0",
+  "version": "0.6.0",
+  "description": "IbuJS command line: create, dev, build, start, check, ai, review, explain, doctor",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "ibu": "./src/cli.mjs"
   },
   "dependencies": {
-    "esbuild": "^0.25.0",
-    "tsx": "^4.19.0"
+    "@anthropic-ai/sdk": "~0.133.0",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15"
   }
 }

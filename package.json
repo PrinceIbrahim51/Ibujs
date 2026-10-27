@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/*",
-    "examples/*"
+    "packages/*"
   ],
   "scripts": {
     "dev": "ibu dev",
@@ -26,6 +25,6 @@
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=20.19"
+    "node": ">=22.13"
   }
 }

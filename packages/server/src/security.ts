@@ -61,8 +61,10 @@ export function logger(options: { log?: (line: string) => void } = {}): Middlewa
   const log = options.log ?? (line => console.log(line));
   return async (ctx, next) => {
     const start = performance.now();
-    try { await next(); } finally {
-      log(`${ctx.req.method} ${ctx.url.pathname} ${ctx.res.statusCode} ${Math.round(performance.now() - start)}ms ${ctx.requestId}`);
-    }
+    // Logged when the response is done, so errors handled later still show their real status.
+    ctx.res.once('close', () => {
+      log(`${ctx.req.method} ${ctx.url.pathname} ${ctx.res.statusCode} ${Math.round(performance.now() - start)}ms ${ctx.requestId}${ctx.res.writableFinished ? '' : ' (aborted)'}`);
+    });
+    await next();
   };
 }

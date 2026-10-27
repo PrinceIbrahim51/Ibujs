@@ -50,7 +50,7 @@ export function serveStatic(root: string | URL = publicDir(), options: StaticOpt
     if (segments.some(part => part.startsWith('.'))) return next();
     let file = await locate(segments);
     const accept = String(ctx.req.headers.accept ?? '');
-    if (!file && options.spa && !extname(decoded) && accept.includes('text/html')) file = await locate(['index.html']);
+    if (!file && options.spa && !extname(decoded) && !decoded.startsWith('/api/') && accept.includes('text/html')) file = await locate(['index.html']);
     if (!file) return next();
     const info = await stat(file);
     const type = TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';

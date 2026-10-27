@@ -258,11 +258,14 @@ export function createServer(options: ServerOptions = {}) {
       if (res.headersSent) { if (!res.writableEnded) res.end(); return; }
       if (status === 413) res.setHeader('Connection', 'close');
       const code = (err as { details?: { code?: string } }).details?.code ?? (err instanceof IbuError ? err.code : undefined);
-      const body: Record<string, unknown> = status >= 500
-        ? { error: 'Internal server error', requestId, ...(dev ? { debug: err instanceof Error ? err.message : String(err) } : {}) }
-        : { error: err instanceof Error ? err.message : 'Request failed', ...(code ? { code } : {}) };
+      // HttpErrors are messages you wrote for users, so they are shown. Anything else that fails
+      // with a 5xx is unexpected and may contain internals, so only the request id is returned.
+      const exposed = err instanceof HttpError || status < 500;
+      const body: Record<string, unknown> = exposed
+        ? { error: err instanceof Error ? err.message : 'Request failed', ...(code ? { code } : {}), ...(status >= 500 ? { requestId } : {}) }
+        : { error: 'Internal server error', requestId, ...(dev ? { debug: err instanceof Error ? err.message : String(err) } : {}) };
       const issues = (err as { issues?: unknown }).issues;
-      if (status < 500 && issues) body.issues = issues;
+      if (exposed && issues) body.issues = issues;
       if (!res.writableEnded) ctx.json(body, status);
     }
   };

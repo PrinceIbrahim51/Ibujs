@@ -1,0 +1,15 @@
+{
+  "name": "@ibujs/ai",
+  "version": "0.6.0",
+  "description": "IbuJS AI: server-only Claude helpers with cost and abuse guards",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "~0.133.0",
+    "@ibujs/server": "*",
+    "@ibujs/ui": "*"
+  }
+}

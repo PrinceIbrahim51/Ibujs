@@ -1,0 +1,31 @@
+*{box-sizing:border-box}
+body{margin:0;background:#0b1020;color:#e9eefc;font:16px/1.6 system-ui,sans-serif}
+.shell{max-width:860px;margin:5vh auto;padding:24px 16px}
+.pill{color:#8cbaff;letter-spacing:.2em;font-weight:700;font-size:12px}
+h1{font-size:clamp(36px,7vw,64px);line-height:1.1;margin:18px 0}
+h3{margin:24px 0 8px}
+p,.muted{color:#b4bed6}
+.panel{background:#151e34;border:1px solid #344260;border-radius:18px;padding:22px;margin:22px 0;overflow-wrap:anywhere}
+.count{font-size:42px;font-weight:700;color:#e9eefc;margin:0}
+nav{display:flex;flex-wrap:wrap;gap:8px}
+nav a{color:#e9eefc;text-decoration:none;padding:10px 16px;border-radius:9px;background:#1e2a47;border:1px solid #344260}
+nav a[aria-current=page]{background:#4c83ff;border-color:#4c83ff}
+a{color:#8cbaff}
+button{border:0;border-radius:9px;background:#4c83ff;color:#fff;padding:12px 18px;margin:6px 8px 6px 0;cursor:pointer;font:inherit}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.secondary{background:#2a3655}
+button.link{background:none;color:#b4bed6;padding:4px 8px;margin:0}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input{flex:1;min-width:200px;padding:12px;border-radius:8px;border:1px solid #94a3b8;background:#fff;color:#111;font:inherit}
+.notes{list-style:none;padding:0;margin:12px 0 0}
+.notes li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #26314d}
+.table{display:grid;gap:2px;font-size:14px}
+.tr{display:grid;grid-template-columns:1fr 90px 110px;gap:12px;padding:10px 8px;border-bottom:1px solid #26314d;align-items:start}
+.th{color:#8cbaff;font-weight:700;border-bottom:1px solid #344260}
+.tr small{display:block;color:#7f8bab;font:12px/1.4 ui-monospace,monospace;margin-top:4px}
+.ok{color:#86efac;font-weight:600}
+.bad{color:#fda4af;font-weight:600}
+pre{background:#0b1020;border:1px solid #344260;border-radius:12px;padding:16px;overflow:auto;font-size:13px;white-space:pre-wrap}
+code{font-family:ui-monospace,monospace;font-size:14px}
+@media (max-width:560px){.tr{grid-template-columns:1fr 70px 90px}}

@@ -1,218 +1,52 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IbuJS v0.5 interactive demo</title><style>*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#e9eefc;font:16px/1.6 system-ui,sans-serif}.shell{max-width:780px;margin:5vh auto;padding:24px}.pill{color:#8cbaff;letter-spacing:.2em;font-weight:700;font-size:12px}h1{font-size:clamp(36px,7vw,64px);line-height:1.1;margin:18px 0}p{color:#b4bed6}.panel{background:#151e34;border:1px solid #344260;border-radius:18px;padding:22px;margin:22px 0}.count{font-size:42px;font-weight:700}button{border:0;border-radius:9px;background:#4c83ff;color:white;padding:12px 18px;margin:6px 8px 6px 0;cursor:pointer}button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="IbuJS live demo: signals, routing and the security playground, running the real engine"><title>IbuJS v0.6 demo</title><style>*{box-sizing:border-box}
+body{margin:0;background:#0b1020;color:#e9eefc;font:16px/1.6 system-ui,sans-serif}
+.shell{max-width:860px;margin:5vh auto;padding:24px 16px}
+.pill{color:#8cbaff;letter-spacing:.2em;font-weight:700;font-size:12px}
+h1{font-size:clamp(36px,7vw,64px);line-height:1.1;margin:18px 0}
+h3{margin:24px 0 8px}
+p,.muted{color:#b4bed6}
+.panel{background:#151e34;border:1px solid #344260;border-radius:18px;padding:22px;margin:22px 0;overflow-wrap:anywhere}
+.count{font-size:42px;font-weight:700;color:#e9eefc;margin:0}
+nav{display:flex;flex-wrap:wrap;gap:8px}
+nav a{color:#e9eefc;text-decoration:none;padding:10px 16px;border-radius:9px;background:#1e2a47;border:1px solid #344260}
+nav a[aria-current=page]{background:#4c83ff;border-color:#4c83ff}
+a{color:#8cbaff}
+button{border:0;border-radius:9px;background:#4c83ff;color:#fff;padding:12px 18px;margin:6px 8px 6px 0;cursor:pointer;font:inherit}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.secondary{background:#2a3655}
+button.link{background:none;color:#b4bed6;padding:4px 8px;margin:0}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input{flex:1;min-width:200px;padding:12px;border-radius:8px;border:1px solid #94a3b8;background:#fff;color:#111;font:inherit}
+.notes{list-style:none;padding:0;margin:12px 0 0}
+.notes li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #26314d}
+.table{display:grid;gap:2px;font-size:14px}
+.tr{display:grid;grid-template-columns:1fr 90px 110px;gap:12px;padding:10px 8px;border-bottom:1px solid #26314d;align-items:start}
+.th{color:#8cbaff;font-weight:700;border-bottom:1px solid #344260}
+.tr small{display:block;color:#7f8bab;font:12px/1.4 ui-monospace,monospace;margin-top:4px}
+.ok{color:#86efac;font-weight:600}
+.bad{color:#fda4af;font-weight:600}
+pre{background:#0b1020;border:1px solid #344260;border-radius:12px;padding:16px;overflow:auto;font-size:13px;white-space:pre-wrap}
+code{font-family:ui-monospace,monospace;font-size:14px}
+@media (max-width:560px){.tr{grid-template-columns:1fr 70px 90px}}
+</style></head><body><div id="app"></div><script>"use strict";(()=>{var d=class extends Error{code;hint;status;constructor(t,n,r){super(`[${t}] ${n}${r?`
+  Hint: ${r}`:""}
+  More: npx ibu explain ${t}`),this.name="IbuError",this.code=t,this.hint=r}},L=(()=>{try{return!1}catch{return!0}})(),ne=e=>{L&&console.warn(`[${e.code}] ${e.message}
+  More: npx ibu explain ${e.code}`)},re=ne;function j(e){re=e??ne}function F(e){re(e)}var Le="about:blank#blocked",Ne=new Set(["http:","https:","mailto:","tel:","sms:"]),Ie=new Set(["href","src","action","formaction","xlink:href","poster","background","cite","data","codebase","manifest","longdesc","lowsrc","dynsrc","icon","profile","classid","archive","ping"]),je=/^data:(?:image\/(?:png|gif|jpe?g|webp|avif|bmp|x-icon)|video\/(?:mp4|webm|ogg)|audio\/(?:mpeg|mp4|ogg|wav|webm))[;,]/i,$e=new Set(["script","base"]),Ue=new Set(["innerhtml","outerhtml","dangerouslysetinnerhtml","srcdoc","insertadjacenthtml"]),Ve=/^[a-zA-Z][a-zA-Z0-9]*(?:-[a-zA-Z0-9]+)*$/,Oe=/^[a-zA-Z_][\w.:-]*$/;function oe(e){return JSON.stringify(e.length>60?e.slice(0,60)+"\u2026":e)}function ie(e,t){return t==="src"&&["img","source","video","audio","track","input"].includes(e)||t==="poster"&&e==="video"||(t==="href"||t==="xlink:href")&&e==="image"}function $(e,t="a",n="href"){let r;try{r=new URL(e,"http://ibu.invalid/")}catch{return!1}if(Ne.has(r.protocol))return!0;if(ie(t.toLowerCase(),n.toLowerCase())){if(r.protocol==="blob:")return!0;if(r.protocol==="data:")return je.test(r.href)}return!1}function se(e){if(!Ve.test(e))throw new d("IBU104",`"${e}" is not a valid element name.`,"Element names are letters and digits, optionally with dashes (my-widget).");if($e.has(e.toLowerCase()))throw new d("IBU103",`<${e}> elements cannot be rendered by IbuJS.`,e.toLowerCase()==="script"?"Put scripts in index.html or import them as modules; rendering scripts from components is a common XSS vector.":"<base> changes how every relative URL on the page resolves; set it in index.html if you really need it.")}var R=e=>/^on[A-Z]/.test(e);function ae(e,t,n){if(t==="children"||t==="key"||t==="ref"||t==="bind")return;let r=t.toLowerCase();if(Ue.has(r))throw new d("IBU102",`<${e} ${t}> would inject raw HTML, which IbuJS never does.`,"Render text and elements as children instead. For user-written rich text, convert it to elements (e.g. a Markdown renderer that outputs IbuJS nodes).");if(r.startsWith("on")&&!(R(t)&&(typeof n=="function"||n==null)))throw new d("IBU102",`<${e} ${t}=${typeof n=="string"?oe(n):typeof n}> is an inline event handler string.`,`Pass a function: ${R(t)?t:"on"+t.slice(2,3).toUpperCase()+t.slice(3)}={() => doSomething()}.`);if(r==="http-equiv"||r==="httpequiv")throw new d("IBU102",`<${e} ${t}> is blocked because it can redirect or reconfigure the page.`,"Set <meta http-equiv> in index.html instead.");if(!Oe.test(t))throw new d("IBU104",`"${t}" is not a valid attribute name on <${e}>.`)}function U(e,t,n){let r=t.toLowerCase();return Ie.has(r)&&!$(n,e,r)?(F({code:"IBU101",message:`Blocked an unsafe URL in <${e} ${t}>: ${oe(n)}. Only http(s), mailto, tel, sms and relative URLs are allowed${ie(e,r)?" (plus blob: and image/audio/video data: URLs here)":""}.`,tag:e,attribute:t,value:n}),Le):r==="attributename"&&/^\s*(?:xlink:)?href\s*$/i.test(n)?(F({code:"IBU101",message:`Blocked <${e} attributeName="${n.trim()}">: animating href can smuggle in a javascript: URL.`,tag:e,attribute:t,value:n}),"data-ibu-blocked"):n}function A(e){return e==null||e===!1||e===!0?"":typeof e=="string"||typeof e=="number"?String(e):Array.isArray(e)?e.map(A).filter(Boolean).join(" "):Object.keys(e).filter(t=>e[t]).join(" ")}var C=e=>e.startsWith("--")?e:e.replace(/[A-Z]/g,t=>"-"+t.toLowerCase());var W=Symbol.for("ibujs.signal"),N=null,Be=0,He=new Set,ce=new WeakSet;function x(e){return typeof e=="object"&&e!==null&&e[W]===!0}function ue(e){for(let t of[...e])Be>0&&!ce.has(t)?He.add(t):t()}function V(e,t=new Set){let n=N;N=t;try{e()}finally{N=n}return t}function v(e){let t=e,n=new Set,r={[W]:!0,get value(){return N?.add(r),t},set value(o){Object.is(o,t)||(t=o,ue(n))},peek:()=>t,set(o){r.value=o},update(o){r.value=o(t)},subscribe(o){return n.add(o),()=>{n.delete(o)}}};return r}function O(e){let t,n=!0,r=[],o=new Set,i=()=>{n||(n=!0,ue(o))};ce.add(i);let l=()=>{let g=V(()=>{t=e()});r.forEach(a=>a()),r=[...g].map(a=>a.subscribe(i)),n=!1},p={[W]:!0,get value(){return N?.add(p),n&&l(),t},peek(){return n&&l(),t},subscribe(g){return o.add(g),()=>{o.delete(g)}}};return p}var le=new Set;function q(e,t=[]){let n,r=[],o=!1,i=!1,l=!1,p=()=>{if(!o){if(i){l=!0;return}i=!0;try{let a=0;do{if(l=!1,++a>100)throw new d("IBU203","An effect keeps changing a signal it also reads, so it re-ran 100 times in a row.","Read with signal.peek() to avoid subscribing, or move the write out of the effect.");typeof n=="function"&&n();let w=V(()=>{n=e()},new Set(t));r.forEach(h=>h()),r=[...w].map(h=>h.subscribe(p))}while(l)}finally{i=!1}}},g=()=>{o||(o=!0,r.forEach(a=>a()),typeof n=="function"&&n(),le.delete(g))};return le.add(g),p(),g}var pe=Symbol.for("ibujs.element");function y(e,t,...n){return{[pe]:!0,type:e,props:{...t??{},...n.length?{children:n}:{}}}}function fe(e){return typeof e=="object"&&e!==null&&e[pe]===!0}function de(e){if(typeof e=="function")return`function ${e.name||"(anonymous)"}`;try{let t=JSON.stringify(e);return t.length>60?t.slice(0,60)+"\u2026":t}catch{return Object.prototype.toString.call(e)}}function k(e,t=[]){if(e==null||typeof e=="boolean")return t;if(typeof e=="string")return t.push(e),t;if(typeof e=="number"||typeof e=="bigint")return t.push(String(e)),t;if(Array.isArray(e)){for(let n of e)k(n,t);return t}if(fe(e)){let{type:n,props:r}=e;if(typeof n=="function"){let o=t.length;k(n(r),t);let i=t.length===o+1?t[o]:void 0;return r.key!=null&&typeof i=="object"&&i.props.key==null&&(t[o]={...i,props:{...i.props,key:r.key}}),t}se(n);for(let o of Object.keys(r))ae(n,o,r[o]);return t.push({tag:n,props:r,children:k(r.children)}),t}if(x(e))return k(e.value,t);throw typeof e=="function"?new d("IBU105",`A ${de(e)} was used as a child.`,"Call it ({renderList()}) or render it as a component (<RenderList />)."):new d("IBU106",`Objects cannot be rendered as children (got ${de(e)}).`,"Render a field such as {item.title}, or {JSON.stringify(value)} to show raw data.")}var we="http://www.w3.org/2000/svg",Pe="http://www.w3.org/1999/xlink",ve=new Set(["value","checked","selected","indeterminate","muted"]),Me=new Set(["opacity","zIndex","flex","flexGrow","flexShrink","order","fontWeight","lineHeight","zoom","gridRow","gridColumn","columnCount","tabSize","aspectRatio","scale"]),Z=new WeakMap;function he(e){Z.get(this)?.get(e.type)?.call(this,e)}function De(e,t,n){let r=t.slice(2).toLowerCase(),o=r==="doubleclick"?"dblclick":r,i=Z.get(e);if(i||Z.set(e,i=new Map),typeof n!="function"){i.delete(o)&&e.removeEventListener(o,he);return}i.has(o)||e.addEventListener(o,he),i.set(o,n)}function B(e,t,n){let r=e,o=t==="value"?n==null?"":String(n):!!n;r[t]!==o&&(r[t]=o)}var H=new WeakMap;function me(){let e=H.get(this);e&&(this.type==="checkbox"?e.value=this.checked:this.type==="radio"?this.checked&&(e.value=this.value):typeof e.peek()=="number"?this.value.trim()!==""&&!Number.isNaN(Number(this.value))&&(e.value=Number(this.value)):e.value=this.value)}function _e(e,t,n){if(!x(n)||!("set"in n))throw new d("IBU205",`bind on <${t}> needs a writable signal, got ${typeof n}.`,"Create one with const name = signal('') and pass the signal itself: bind={name} (not name.value).");H.has(e)||(e.addEventListener("input",me),e.addEventListener("change",me)),H.set(e,n);let r=e,o=n.value;r.type==="checkbox"?B(e,"checked",o):r.type==="radio"?B(e,"checked",o===r.value):B(e,"value",o)}function ze(e,t,n){let r=e.style;if(t!=null&&typeof t!="string"&&(typeof t!="object"||Array.isArray(t)))throw new d("IBU107",`style must be an object or a string, got ${Array.isArray(t)?"an array":typeof t}.`,`style={{ color: 'red', fontSize: 18 }} or style="color: red".`);if(typeof t=="string"){r.cssText=t;return}if(typeof n=="string")r.cssText="";else if(n&&typeof n=="object")for(let o of Object.keys(n))(!t||!(o in t))&&r.removeProperty(C(o));if(t)for(let[o,i]of Object.entries(t))i==null||i===!1?r.removeProperty(C(o)):r.setProperty(C(o),typeof i=="number"&&i!==0&&!Me.has(o)?i+"px":String(i))}function Je(e,t){typeof e=="function"?e(t):e&&typeof e=="object"&&"current"in e&&(e.current=t)}function ge(e,t,n,r,o){if(n==="children"||n==="key"||n==="bind")return;if(n==="ref"){r!==o&&Je(r,e);return}if(R(n)){De(e,n,r);return}if(n==="style"){ze(e,r,o);return}if(n==="class"||n==="className"){let p=A(r);p?e.setAttribute("class",p):e.removeAttribute("class");return}if(ve.has(n)&&n in e){B(e,n,r);return}let i=n==="htmlFor"?"for":n;if(r==null||r===!1){e.removeAttribute(i);return}let l=U(t,i,r===!0?"":String(r));i.startsWith("xlink:")?e.setAttributeNS(Pe,i,l):e.setAttribute(i,l)}function Se(e,t,n,r){if(r)for(let o of Object.keys(r))o in n||ge(e,t,o,void 0,r[o]);for(let o of Object.keys(n))(!r||ve.has(o)||!Object.is(r[o],n[o]))&&ge(e,t,o,n[o],r?.[o]);"bind"in n?_e(e,t,n.bind):r&&"bind"in r&&H.delete(e)}function xe(e,t){if(typeof e=="string")return{r:e,node:document.createTextNode(e),children:[]};let n=t||e.tag==="svg",r=n?document.createElementNS(we,e.tag):document.createElement(e.tag),o=e.children.map(i=>xe(i,n&&e.tag!=="foreignObject"));return r.append(...o.map(i=>i.node)),Se(r,e.tag,e.props),{r:e,node:r,children:o}}var K=e=>typeof e=="string"?void 0:e.props.key,be=new Set;function Fe(e){be.has(e)||(be.add(e),console.warn(e))}function ke(e,t,n,r){let o=new Map;for(let a of t){let w=K(a.r);w!=null&&o.set(w,a)}let i=new Set,l=L?new Set:void 0,p=n.map((a,w)=>{let h=K(a);l&&h!=null&&(l.has(h)&&Fe(`[IBU204] Two siblings share the key ${JSON.stringify(h)}; list items may be reused incorrectly. Use a unique id per item.
+  More: npx ibu explain IBU204`),l.add(h));let u=h!=null?o.get(h):t[w];if(h==null&&u&&K(u.r)!=null&&(u=void 0),u&&i.has(u)&&(u=void 0),u&&i.add(u),!u||typeof u.r!=typeof a||typeof a!="string"&&u.r.tag!==a.tag)return xe(a,r);if(typeof a=="string")return u.r!==a&&(u.node.data=a),u.r=a,u;let E=u.node,c=r||a.tag==="svg";return u.children=ke(E,u.children,a.children,c&&a.tag!=="foreignObject"),Se(E,a.tag,a.props,u.r.props),u.r=a,u});p.forEach((a,w)=>{let h=e.childNodes[w];h!==a.node&&e.insertBefore(a.node,h??null)});let g=new Set(p.map(a=>a.node));for(let a of t)!g.has(a.node)&&a.node.parentNode===e&&e.removeChild(a.node);return p}var X="ibu-error-overlay";function We(e){let t=document.getElementById(X);t||(t=document.createElement("div"),t.id=X,t.setAttribute("role","alert"),Object.assign(t.style,{position:"fixed",left:"16px",right:"16px",bottom:"16px",maxHeight:"50vh",overflow:"auto",zIndex:"2147483647",background:"#2b0d12",color:"#ffe4e6",border:"1px solid #fb7185",borderRadius:"12px",padding:"16px",font:"13px/1.5 ui-monospace, monospace",whiteSpace:"pre-wrap"}),document.body.append(t)),t.textContent=`IbuJS could not render the page, so the last working version is still shown.
 
-input{padding:12px;border-radius:8px;border:1px solid #94a3b8;background:#fff;color:#111;max-width:100%}li{padding:6px}</style></head><body><div id="app"></div><script>function h(type, props, ...children) {
-    return { type, props: { ...(props ?? {}), ...(children.length ? { children } : {}) } };
-}
-let tracking = null;
-function signal(initial) {
-    let value = initial;
-    const listeners = new Set();
-    return {
-        get value() { tracking?.add(this); return value; },
-        set value(next) { if (!Object.is(next, value)) {
-            value = next;
-            for (const fn of [...listeners])
-                fn();
-        } },
-        subscribe(fn) { listeners.add(fn); return () => { listeners.delete(fn); }; }
-    };
-}
-const unsafeUrl = /^(?:\s*(?:javascript|vbscript|data):)/i;
-function setProp(el, key, val, old) {
-    if (key === 'children' || key === 'key' || key === 'ref')
-        return;
-    if (key === 'dangerouslySetInnerHTML' || key === 'innerHTML' || /^on/i.test(key) && !/^on[A-Z]/.test(key))
-        throw new Error('Unsafe property: ' + key);
-    if (/^on[A-Z]/.test(key)) {
-        const event = key.slice(2).toLowerCase();
-        if (typeof old === 'function')
-            el.removeEventListener(event, old);
-        if (typeof val === 'function')
-            el.addEventListener(event, val);
-        return;
-    }
-    if (key === 'style') {
-        if (val != null && (typeof val !== 'object' || Array.isArray(val)))
-            throw new Error('Style must be an object');
-        if (old && typeof old === 'object')
-            for (const name of Object.keys(old))
-                el.style.removeProperty(name.replace(/[A-Z]/g, x => '-' + x.toLowerCase()));
-        if (val)
-            Object.assign(el.style, val);
-        return;
-    }
-    const attr = key === 'className' ? 'class' : key === 'htmlFor' ? 'for' : key;
-    if (val == null || val === false) {
-        el.removeAttribute(attr);
-        return;
-    }
-    if (/^(href|src|action|formaction|xlink:href)$/i.test(attr) && unsafeUrl.test(String(val)))
-        throw new Error('Unsafe URL');
-    if (val === true)
-        el.setAttribute(attr, '');
-    else
-        el.setAttribute(attr, String(val));
-}
-function normalize(child) {
-    if (child == null || typeof child === 'boolean')
-        return [];
-    if (Array.isArray(child))
-        return child.flatMap(normalize);
-    if (typeof child !== 'object')
-        return [String(child)];
-    if (typeof child.type === 'function')
-        return normalize(child.type(child.props));
-    return [child];
-}
-function mount(vnode) {
-    if (typeof vnode === 'string')
-        return { vnode, node: document.createTextNode(vnode), children: [] };
-    const el = document.createElement(vnode.type);
-    for (const [key, val] of Object.entries(vnode.props))
-        setProp(el, key, val);
-    const children = normalize(vnode.props.children).map(mount);
-    el.append(...children.map(x => x.node));
-    return { vnode, node: el, children };
-}
-function reconcile(parent, old, next) {
-    const oldKeys = new Map();
-    for (const entry of old)
-        if (typeof entry.vnode !== 'string' && entry.vnode.props.key != null)
-            oldKeys.set(entry.vnode.props.key, entry);
-    const used = new Set();
-    const result = next.map((vnode, index) => {
-        const key = typeof vnode !== 'string' ? vnode.props.key : undefined;
-        let previous = key != null ? oldKeys.get(key) : old[index];
-        if (key == null && previous && typeof previous.vnode !== 'string' && previous.vnode.props.key != null)
-            previous = undefined;
-        if (previous && used.has(previous))
-            previous = undefined;
-        if (previous)
-            used.add(previous);
-        if (!previous || typeof previous.vnode !== typeof vnode || (typeof vnode !== 'string' && typeof previous.vnode !== 'string' && previous.vnode.type !== vnode.type))
-            return mount(vnode);
-        if (typeof vnode === 'string' && typeof previous.vnode === 'string') {
-            if (previous.vnode !== vnode)
-                previous.node.textContent = vnode;
-            previous.vnode = vnode;
-            return previous;
-        }
-        if (typeof vnode !== 'string' && typeof previous.vnode !== 'string') {
-            const el = previous.node;
-            for (const key of new Set([...Object.keys(previous.vnode.props), ...Object.keys(vnode.props)])) {
-                if (!Object.is(previous.vnode.props[key], vnode.props[key]))
-                    setProp(el, key, vnode.props[key], previous.vnode.props[key]);
-            }
-            previous.children = reconcile(el, previous.children, normalize(vnode.props.children));
-            previous.vnode = vnode;
-        }
-        return previous;
-    });
-    result.forEach((entry, i) => {
-        const at = parent.childNodes[i];
-        if (at !== entry.node)
-            parent.insertBefore(entry.node, at ?? null);
-    });
-    const retained = new Set(result.map(x => x.node));
-    for (const entry of old)
-        if (!retained.has(entry.node) && entry.node.parentNode === parent)
-            parent.removeChild(entry.node);
-    return result;
-}
-function createApp(view, target, dependencies = []) {
-    let disposed = false;
-    let entries = [];
-    let unsubs = [];
-    let updating = false;
-    const update = () => {
-        if (disposed || updating)
-            return;
-        updating = true;
-        try {
-            const observed = new Set(dependencies);
-            const previous = tracking;
-            tracking = observed;
-            let vnodes;
-            try {
-                vnodes = normalize(view());
-            }
-            finally {
-                tracking = previous;
-            }
-            entries = reconcile(target, entries, vnodes);
-            unsubs.forEach(fn => fn());
-            unsubs = [...observed].map(dep => dep.subscribe(update));
-        }
-        finally {
-            updating = false;
-        }
-    };
-    update();
-    return { update, unmount() { disposed = true; unsubs.forEach(fn => fn()); target.replaceChildren(); entries = []; } };
-}
-function matchRoute(pattern, pathname) {
-    const parts = pattern.split('/').filter(Boolean);
-    const actual = pathname.split('/').filter(Boolean);
-    if (parts.length !== actual.length)
-        return null;
-    const params = {};
-    for (let i = 0; i < parts.length; i++) {
-        if (parts[i].startsWith(':')) {
-            try {
-                params[parts[i].slice(1)] = decodeURIComponent(actual[i]);
-            }
-            catch {
-                return null;
-            }
-        }
-        else if (parts[i] !== actual[i])
-            return null;
-    }
-    return params;
-}
-function createRouter(routes, notFound = () => 'Not found') {
-    const path = signal(typeof window === 'undefined' ? '/' : window.location.pathname);
-    const onPop = () => { path.value = window.location.pathname; };
-    if (typeof window !== 'undefined')
-        window.addEventListener('popstate', onPop);
-    return {
-        path,
-        navigate(url) {
-            if (typeof window === 'undefined')
-                throw new Error('Navigation requires a browser');
-            const next = new URL(url, window.location.href);
-            if (next.origin !== window.location.origin)
-                throw new Error('Cross-origin navigation denied');
-            window.history.pushState({}, '', next.pathname + next.search + next.hash);
-            path.value = next.pathname;
-        },
-        view() {
-            const current = path.value;
-            for (const route of routes) {
-                const params = matchRoute(route.path, current);
-                if (params)
-                    return route.component(params);
-            }
-            return notFound({});
-        },
-        dispose() { if (typeof window !== 'undefined')
-            window.removeEventListener('popstate', onPop); }
-    };
-}
+${e instanceof Error?e.message:String(e)}
 
+(This box only appears during development.)`}function qe(e){console.error(e),L&&typeof document<"u"&&We(e)}var ye=0,G=!1;function Ke(){if(G||(G=!0,setTimeout(()=>{ye=0,G=!1},0)),++ye>1e3)throw new d("IBU203","The app re-rendered more than 1000 times without pausing.","A component probably writes to a signal it reads while rendering. Move the write into an event handler or effect().")}function Q(e,t,n={}){let r=typeof t=="string"?document.querySelector(t):t;if(!r)throw new d("IBU201",`The mount target ${typeof t=="string"?`"${t}" `:""}was not found.`,'Add <div id="app"></div> to index.html and load your script with type="module" (which runs after the page is parsed).');let o=Array.isArray(n)?n:[],i=!Array.isArray(n)&&n.onError||qe,l=r.namespaceURI===we,p=[],g=new Set,a=[],w=!1,h=!1,u=()=>{!h&&!w&&(h=!0,queueMicrotask(c))},E=b=>{a.forEach(m=>m()),g=b,a=[...b].map(m=>m.subscribe(u))};function c(){if(h=!1,w)return;let b=new Set(o);try{Ke(),V(()=>{let m=k(e({}));try{p=ke(r,p,m,l)}catch(T){throw r.replaceChildren(),p=[],T}},b),E(b),L&&document.getElementById(X)?.remove()}catch(m){E(new Set([...g,...b])),i(m)}}return r.replaceChildren(),c(),{update:c,unmount(){w=!0,a.forEach(b=>b()),r.replaceChildren(),p=[]},root:r}}function Ee(e,t){let n=e.split("/").filter(Boolean),r=t.split("/").filter(Boolean),o=n[n.length-1]==="*";if(o?r.length<n.length-1:n.length!==r.length)return null;let i={};try{for(let l=0;l<n.length;l++){if(o&&l===n.length-1){i["*"]=r.slice(l).map(decodeURIComponent).join("/");break}if(n[l].startsWith(":"))i[n[l].slice(1)]=decodeURIComponent(r[l]);else if(n[l]!==r[l])return null}}catch{return null}return i}function Y(e,t=()=>"Not found",n={}){let r=typeof window<"u",o=n.mode??"history",i=(n.base??"").replace(/\/+$/,""),l=()=>{if(!r)return{path:"/",search:""};if(o==="hash"){let b=new URL(window.location.hash.slice(1)||"/","http://ibu.invalid");return{path:b.pathname,search:b.search}}let c=window.location.pathname;return i&&(c===i||c.startsWith(i+"/"))&&(c=c.slice(i.length)||"/"),{path:c,search:window.location.search}},p=l(),g=v(p.path),a=v(p.search),w=()=>{let c=l();g.value=c.path,a.value=c.search};r&&window.addEventListener(o==="hash"?"hashchange":"popstate",w);let h=c=>o==="hash"?"#"+c:c.startsWith("/")&&!c.startsWith("//")?i+c:c,u=(c,b={})=>{if(!r)throw new d("IBU302","router.navigate() needs a browser.","On the server, render the route you need directly.");let m=new URL(o==="hash"?c:h(c),o==="hash"?"http://ibu.invalid"+g.peek():window.location.href);if(o!=="hash"&&m.origin!==window.location.origin)throw new d("IBU301",`Navigation to ${m.origin} was blocked: the router only navigates within this site.`,'For external sites use a normal link: <a href="https://...">.');let T=o==="hash"?"#"+m.pathname+m.search:m.pathname+m.search+m.hash;window.history[b.replace?"replaceState":"pushState"]({},"",T),w(),n.scrollToTop!==!1&&!m.hash&&typeof window.scrollTo=="function"&&window.scrollTo(0,0)};return{path:g,search:a,Link:c=>{let{href:b,children:m,onClick:T,...te}=c;return y("a",{...te,href:h(b),"aria-current":g.value===b?"page":void 0,onClick:S=>{typeof T=="function"&&T(S),!(S.defaultPrevented||S.button!==0||S.metaKey||S.ctrlKey||S.shiftKey||S.altKey||te.target)&&(S.preventDefault(),u(b))}},m)},navigate:u,query:()=>new URLSearchParams(a.value),isActive:c=>g.value===c,view(){let c=g.value;for(let b of e){let m=Ee(b.path,c);if(m)return b.component(m)}return t({})},dispose(){r&&window.removeEventListener(o==="hash"?"hashchange":"popstate",w)}}}var Te=Symbol("ibujs.safe-html"),I=class{#e;constructor(t,n){if(t!==Te)throw new d("IBU109","SafeHtml cannot be created directly.","Build HTML with the html`` template or renderToString(); both escape their inputs.");this.#e=n}toString(){return this.#e}static isSafeHtml(t){return typeof t=="object"&&t!==null&&#e in t}},Ge=I.isSafeHtml,Ze=e=>new I(Te,e);function P(e){return String(e).replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[t])}var Xe=new Set(["area","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]),Qe=new Set(["checked","selected","disabled","readonly","required","multiple","hidden","open","autofocus","muted","novalidate"]);function Ye(e){return typeof e=="string"?e:!e||typeof e!="object"?"":Object.entries(e).filter(([,t])=>t!=null&&t!==!1).map(([t,n])=>`${C(t)}:${typeof n=="number"&&n!==0&&!/^(opacity|zIndex|flex|flexGrow|flexShrink|order|fontWeight|lineHeight|zoom)$/.test(t)?n+"px":n}`).join(";")}function et(e,t){let n="";for(let[r,o]of Object.entries(t)){if(r==="children"||r==="key"||r==="ref"||R(r))continue;let i=r==="className"?"class":r==="htmlFor"?"for":r,l=o;if(!(r==="bind"&&(!x(o)||(i=t.type==="checkbox"||t.type==="radio"?"checked":"value",l=i==="checked"?t.type==="radio"?o.value===t.value:!!o.value:o.value,e==="textarea")))&&(i==="class"&&(l=A(o)||null),i==="style"&&(l=Ye(o)||null),!(l==null||l===!1))){if(l===!0||Qe.has(i.toLowerCase())&&l){n+=" "+i;continue}n+=` ${i}="${P(U(e,i,String(l)))}"`}}return n}function Re(e){if(typeof e=="string")return P(e);let{tag:t,props:n,children:r}=e,o=`<${t}${et(t,n)}>`;if(Xe.has(t.toLowerCase()))return o;if(t.toLowerCase()==="style"){let l=r.map(p=>typeof p=="string"?p:"").join("");if(/<\//.test(l))throw new d("IBU108",'<style> content contains "</", which could break out of the style element.',"Do not put user input inside <style>; use the style prop for dynamic values.");return o+l+`</${t}>`}let i=r.map(Re).join("");return t.toLowerCase()==="textarea"&&x(n.bind)&&(i=P(n.bind.value??"")),o+i+`</${t}>`}function ee(e){let t=k(typeof e=="function"?e():e);return Ze(t.map(Re).join(""))}function s(e,t,n){return y(e,n===void 0?t:{...t,key:n})}var f=s;var D=v(0),nt=O(()=>D.value*2);function rt(){return f("section",{class:"panel",children:[s("h2",{children:"Reactive counter"}),s("p",{class:"count",children:D}),f("p",{class:"muted",children:["Doubled (computed): ",nt]}),s("button",{onClick:()=>D.value++,children:"Increase +1"}),s("button",{class:"secondary",onClick:()=>D.value=0,children:"Reset"})]})}var ot=()=>{try{return JSON.parse(localStorage.getItem("ibujs-demo-notes")??"[]")}catch{return[]}},z=v(ot());q(()=>{try{localStorage.setItem("ibujs-demo-notes",JSON.stringify(z.value))}catch{}});var J=v("");function it(e){e.preventDefault();let t=J.value.trim();t&&(z.update(n=>[{id:Date.now(),text:t},...n]),J.value="")}function st(){return f("section",{class:"panel",children:[s("h2",{children:"Notes"}),s("p",{class:"muted",children:"Kept in this browser (localStorage). In a real app they go to SQLite through the server. Try a note like <img src=x onerror=alert(1)>."}),f("form",{class:"row",onSubmit:it,children:[s("input",{bind:J,placeholder:"Write a note","aria-label":"New note",maxlength:"300"}),s("button",{disabled:!J.value.trim(),children:"Add note"})]}),s("ul",{class:"notes",children:z.value.map(e=>f("li",{children:[s("span",{children:e.text}),s("button",{class:"link","aria-label":"Delete note",onClick:()=>z.update(t=>t.filter(n=>n.id!==e.id)),children:"\u2715"})]},e.id))})]})}var at=[{name:"javascript: link",v05:"Blocked",build:()=>y("a",{href:"javascript:alert(document.cookie)"},"Click me")},{name:"javascript: hidden by a tab",v05:"Executed",build:()=>y("a",{href:"java	script:alert(1)"},"Click me")},{name:"javascript: hidden by a newline",v05:"Executed",build:()=>y("a",{href:`java
+script:alert(1)`},"Click me")},{name:"Control character before javascript:",v05:"Executed",build:()=>y("a",{href:"javascript:alert(1)"},"Click me")},{name:"iframe srcdoc",v05:"Executed",build:()=>y("iframe",{srcdoc:"<script>alert(1)<\/script>"})},{name:"API data shaped like an element",v05:"Executed",build:()=>y("p",{},"By: ",JSON.parse('{"type":"script","props":{"children":["alert(1)"]}}'))},{name:"SVG <animate> rewriting href",v05:"SVG broken",build:()=>y("svg",{},y("a",{},y("animate",{attributeName:"href",values:"javascript:alert(1)"}),y("text",{},"x")))},{name:"<script> element",v05:"Executed",build:()=>y("script",{},"alert(1)")},{name:'onclick="..." string',v05:"Blocked",build:()=>y("button",{onclick:"alert(1)"},"x")},{name:"innerHTML prop",v05:"Blocked",build:()=>y("div",{innerHTML:"<img src=x onerror=alert(1)>"})},{name:"Text that looks like HTML",v05:"Escaped",build:()=>y("p",{},"<img src=x onerror=alert(1)>")}];function lt(e){let t=[];j(n=>t.push(n));try{let n=ee(e.build()).toString();return t.length?{verdict:"Neutralised",detail:`${t[0].code}: unsafe value replaced \u2192 ${n}`}:{verdict:"Safe",detail:`Rendered as harmless text \u2192 ${n}`}}catch(n){return{verdict:"Refused",detail:String(n.message).split(`
+`)[0]}}finally{j(null)}}var ct=at.map(e=>({...e,...lt(e)})),_=v("java	script:alert(1)"),Ae=O(()=>$(_.value)?"Allowed":"Blocked (IBU101)");function ut(){return f("section",{class:"panel",children:[s("h2",{children:"Security playground"}),s("p",{class:"muted",children:"Real exploits from the v0.5 audit, run through this page's actual IbuJS engine."}),f("div",{class:"table",role:"table","aria-label":"Attack results",children:[f("div",{class:"tr th",role:"row",children:[s("span",{role:"columnheader",children:"Attack"}),s("span",{role:"columnheader",children:"v0.5"}),s("span",{role:"columnheader",children:"v0.6"})]}),ct.map(e=>f("div",{class:"tr",role:"row",children:[f("span",{role:"cell",children:[e.name,s("small",{children:e.detail})]}),s("span",{role:"cell",class:e.v05==="Executed"?"bad":e.v05==="SVG broken"?"muted":"ok",children:e.v05}),s("span",{role:"cell",class:"ok",children:e.verdict})]},e.name))]}),s("h3",{children:"Try your own URL"}),f("div",{class:"row",children:[s("input",{bind:_,"aria-label":"URL to test"}),s("span",{class:Ae.value==="Allowed"?"ok":"bad",children:Ae})]}),f("p",{class:"muted",children:["Rendered link: ",s("a",{href:_.value,target:"_blank",rel:"noopener",children:_.value||"(empty)"})]})]})}function dt(){return f("section",{class:"panel",children:[s("h2",{children:"AI built in"}),s("p",{children:"This offline page cannot call Claude, so here is what the AI features do in a real project:"}),s("pre",{children:`$ npx ibu ai "add a page that lists my notes with a delete button"
+Asking Claude (claude-opus-5-5) with 4 project files\u2026
 
-const count=signal(0), page=signal('counter'), notes=signal([]), entry=signal(''), status=signal('Ready');
-function navigate(to){page.value=to;try{history.pushState({},'',to==='counter'?'/':'/'+to)}catch{}}
-window.addEventListener('popstate',()=>{page.value=location.pathname.slice(1)||'counter'});
-const Button=({label,onclick})=>h('button',{onClick:onclick},label);
-function App(){return h('main',{className:'shell'},
- h('span',{className:'pill'},'IBUJS v0.5 • LIVE DEMO'),h('h1',{},'Build your own web.'),
- h('p',{},'TypeScript + JSX full-stack framework. This standalone demo uses the real IbuJS UI rendering engine.'),
- h('nav',{},...['counter','notes','api','about'].map(t=>h('button',{onClick:()=>navigate(t)},t.toUpperCase()))),
- page.value==='counter'?h('section',{className:'panel'},h('h2',{},'Reactive counter'),h('div',{className:'count'},count.value),h('button',{onClick:()=>count.value++},'Increase +1'),h('button',{onClick:()=>count.value=0},'Reset')):
- page.value==='notes'?h('section',{className:'panel'},h('h2',{},'Local notes (database adapter demonstration)'),h('input',{value:entry.value,placeholder:'Write a note',onInput:e=>entry.value=e.target.value}),h('button',{onClick:()=>{if(entry.value.trim()){notes.value=[...notes.value,entry.value.trim()];entry.value='';}}},'Add note'),h('ul',{},...notes.value.map((n,i)=>h('li',{key:i},n)))):
- page.value==='api'?h('section',{className:'panel'},h('h2',{},'Backend API demo'),h('p',{},'This offline preview simulates the response. Run npm run dev for a real HTTP server.'),h('button',{onClick:()=>status.value='Hello from IbuJS backend! (offline simulated response)'},'Call /api/hello'),h('p',{},status.value)):
- h('section',{className:'panel'},h('h2',{},'What is included?'),h('p',{},'Reactive JSX, routing, request IDs, rate limiting, signed sessions, validation, database adapter interface, and tests.'))
- );}
-createApp(()=>h(App,{}),document.getElementById('app'));
+Adds a /notes page and DELETE /api/notes/:id route.
+
+  + new      src/pages/Notes.tsx   +41 -0 lines
+  ~ modified src/server.ts         +7 -0 lines
+  ~ modified src/main.tsx          +3 -1 lines
+
+Apply 3 file changes? [y/N]`}),f("ul",{children:[f("li",{children:[s("b",{children:"ibu ai"}),": describe a change in plain English; every proposed file is path-checked and security-linted before you approve it."]}),f("li",{children:[s("b",{children:"ibu review"}),": an AI security review of your code."]}),f("li",{children:[s("b",{children:"ibu explain IBU412"}),": every error has a code with a plain-English fix (offline), or ",s("b",{children:"--ai"})," for a tailored answer."]}),f("li",{children:[s("b",{children:"@ibujs/ai"}),": ",s("code",{children:"app.post('/api/ask', ai.route())"})," streams answers with your key kept on the server, plus rate and cost limits."]}),f("li",{children:[s("b",{children:"AGENTS.md + llms.txt"}),": Cursor, Claude Code and Copilot write correct, secure IbuJS code from the first prompt."]})]})]})}var Ce=Y([{path:"/",component:rt},{path:"/notes",component:st},{path:"/security",component:ut},{path:"/ai",component:dt}],()=>s("section",{class:"panel",children:s("h2",{children:"Page not found"})}),{mode:"hash"}),{Link:M}=Ce;function pt(){return f("main",{class:"shell",children:[s("span",{class:"pill",children:"IBUJS v0.6 \u2022 LIVE DEMO"}),s("h1",{children:"Build your own web."}),s("p",{children:"Full-stack TypeScript + JSX, secure by default, made for beginners and AI. This page runs the real IbuJS engine."}),f("nav",{children:[s(M,{href:"/",children:"Counter"}),s(M,{href:"/notes",children:"Notes"}),s(M,{href:"/security",children:"Security"}),s(M,{href:"/ai",children:"AI"})]}),Ce.view()]})}Q(pt,"#app");})();
 </script></body></html>

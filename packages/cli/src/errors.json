@@ -1,0 +1,380 @@
+{
+  "IBU101": {
+    "title": "Unsafe URL blocked",
+    "why": "A link, image, form or frame received a URL with a dangerous scheme such as javascript:, vbscript: or data:text/html. Clicking or loading it would run attacker code (XSS). Browsers ignore tabs, newlines and control characters inside URLs, so IbuJS parses URLs exactly like the browser before checking them.",
+    "fix": "Only http(s), mailto, tel, sms and relative URLs are allowed (plus blob: and image/audio/video data: URLs for media src). If the URL comes from users, validate it when you save it: s.string({ url: true }). The blocked attribute is replaced with about:blank#blocked; the page keeps working.",
+    "example": "<a href={profile.website}>Website</a>   // safe: a javascript: value is neutralised"
+  },
+  "IBU102": {
+    "title": "Raw HTML or inline event handler blocked",
+    "why": "innerHTML, dangerouslySetInnerHTML, srcdoc, outerHTML, http-equiv and string event handlers (onclick=\"...\") turn text into running code or markup. They are the most common source of XSS, so IbuJS has no way to use them.",
+    "fix": "Render children instead of HTML strings, and pass functions as handlers. For user-written rich text, use a Markdown renderer that outputs IbuJS elements, or render it on a separate sandboxed origin.",
+    "example": "<button onClick={() => save()}>Save</button>   // not onclick=\"save()\""
+  },
+  "IBU103": {
+    "title": "Element cannot be rendered",
+    "why": "<script> elements created from components execute, and <base> silently changes how every relative URL on the page resolves. Both are classic injection targets.",
+    "fix": "Load scripts from index.html or import them as modules. Set <base> in index.html if you really need it.",
+    "example": "import confetti from './confetti.js'   // instead of rendering <script src=...>"
+  },
+  "IBU104": {
+    "title": "Invalid element or attribute name",
+    "why": "Element and attribute names must be plain identifiers. Names built from data could otherwise smuggle markup.",
+    "fix": "Use literal tag names in JSX. If you spread objects into props ({...data}), pick the fields you need instead.",
+    "example": "<div data-id={item.id} />"
+  },
+  "IBU105": {
+    "title": "A function was used as a child",
+    "why": "Functions cannot be shown on screen. This usually means a missing call or a component written as {MyComponent}.",
+    "fix": "Call it ({renderList()}) or render it as a component (<RenderList />).",
+    "example": "<ul>{renderItems()}</ul>"
+  },
+  "IBU106": {
+    "title": "An object was used as a child",
+    "why": "Plain objects (for example a whole API response) cannot be rendered. IbuJS also refuses them because JSON shaped like an element could otherwise inject markup.",
+    "fix": "Render the field you want, or stringify it for debugging.",
+    "example": "<p>{user.name}</p>   or   <pre>{JSON.stringify(user, null, 2)}</pre>"
+  },
+  "IBU107": {
+    "title": "Invalid style value",
+    "why": "style must be an object of CSS properties or a CSS string.",
+    "fix": "Use an object with camelCase names; numbers get px automatically where that makes sense.",
+    "example": "<div style={{ color: 'red', fontSize: 18 }} />"
+  },
+  "IBU108": {
+    "title": "Unsafe <style> content during server rendering",
+    "why": "Text inside <style> is not escaped by browsers. A \"</\" sequence could close the style tag and start real HTML.",
+    "fix": "Never put user input inside <style>. Use the style prop for dynamic values.",
+    "example": "<div style={{ background: theme.color }} />"
+  },
+  "IBU109": {
+    "title": "SafeHtml cannot be created directly",
+    "why": "SafeHtml marks HTML that IbuJS produced and escaped itself. Letting code wrap arbitrary strings would bring back XSS.",
+    "fix": "Build HTML with the html`` template, renderPage() or renderToString(); all three escape their inputs.",
+    "example": "ctx.html(renderPage({ title: 'Home', body: <App /> }))"
+  },
+  "IBU201": {
+    "title": "Mount target not found",
+    "why": "createApp() could not find the element to render into.",
+    "fix": "Add <div id=\"app\"></div> to index.html and load your script with type=\"module\" so it runs after the page is parsed.",
+    "example": "createApp(App, '#app')"
+  },
+  "IBU203": {
+    "title": "Infinite update loop",
+    "why": "Something writes to a signal that it also reads, so every update triggers another one.",
+    "fix": "Do not change signals while rendering. Move writes into event handlers or effects, and read with signal.peek() when you need the value without subscribing.",
+    "example": "effect(() => { total.value = items.value.length })   // fine: reads items, writes total"
+  },
+  "IBU204": {
+    "title": "Duplicate keys in a list",
+    "why": "Keys tell IbuJS which item is which when a list changes. Duplicates make it reuse the wrong DOM nodes (inputs keep the wrong text, animations jump).",
+    "fix": "Use a unique, stable id per item, not the array index.",
+    "example": "{notes.value.map(n => <Note key={n.id} note={n} />)}"
+  },
+  "IBU205": {
+    "title": "bind needs a writable signal",
+    "why": "bind keeps an input and a signal in sync in both directions, so it needs the signal object itself.",
+    "fix": "Pass the signal, not its value.",
+    "example": "const name = signal('');  <input bind={name} />"
+  },
+  "IBU301": {
+    "title": "Router refused to leave the site",
+    "why": "router.navigate() only moves between pages of your own app. Accepting other origins would let a crafted ?next= parameter send users to a phishing site.",
+    "fix": "Use a normal <a href=\"https://...\"> for external links.",
+    "example": "router.navigate('/dashboard')"
+  },
+  "IBU302": {
+    "title": "router.navigate() needs a browser",
+    "why": "There is no address bar on the server.",
+    "fix": "On the server, render the route you need directly or send a redirect with ctx.redirect().",
+    "example": "ctx.redirect('/login')"
+  },
+  "IBU303": {
+    "title": "api() needs a browser",
+    "why": "api() calls your own server from the page. On the server there is no page origin to call.",
+    "fix": "On the server, call your functions or database directly instead of over HTTP.",
+    "example": "const notes = await db.sql`SELECT * FROM notes`"
+  },
+  "IBU304": {
+    "title": "api() only calls your own server",
+    "why": "Sending requests (with cookies) to other origins from the page leaks data and API keys. api() resolves the URL like fetch would, so tricks such as //evil.com or /\\evil.com are caught.",
+    "fix": "Call third-party APIs from your server, where keys stay secret, and expose your own route.",
+    "example": "app.get('/api/weather', async ctx => ctx.json(await getWeather()))"
+  },
+  "IBU401": {
+    "title": "Request body too large",
+    "why": "The upload exceeded maxBodyBytes (1 MB by default). Unbounded bodies let anyone exhaust server memory.",
+    "fix": "Raise the limit only where needed: createServer({ maxBodyBytes: 5 * 1024 * 1024 }).",
+    "example": ""
+  },
+  "IBU402": {
+    "title": "Expected JSON",
+    "why": "ctx.body() reads JSON and requires Content-Type: application/json. This also prevents simple cross-site form posts.",
+    "fix": "Send JSON from the page with api.post(path, data), which sets the header for you.",
+    "example": "await api.post('/api/notes', { text })"
+  },
+  "IBU403": {
+    "title": "Body is not valid JSON",
+    "why": "The request body could not be parsed.",
+    "fix": "Send JSON.stringify(data) or use api.post(), which does it for you.",
+    "example": ""
+  },
+  "IBU404": {
+    "title": "Not found",
+    "why": "No route or file matches this path and method.",
+    "fix": "Check the path and HTTP method, and that the route is registered before app.listen().",
+    "example": ""
+  },
+  "IBU405": {
+    "title": "Invalid route definition",
+    "why": "Routes must start with \"/\", have a handler, and be defined once.",
+    "fix": "app.get('/path', ctx => ctx.json({ ... })). Remove duplicate definitions.",
+    "example": ""
+  },
+  "IBU406": {
+    "title": "Unsafe CORS configuration",
+    "why": "Allowing every origin (\"*\") together with cookies would let any website act as your logged-in users.",
+    "fix": "List the exact origins that may call your API with credentials.",
+    "example": "createServer({ cors: { origins: ['https://app.example.com'], credentials: true } })"
+  },
+  "IBU407": {
+    "title": "ctx.html() needs escaped HTML",
+    "why": "A plain string could contain injected markup. html``, renderPage() and renderToString() escape user data automatically.",
+    "fix": "Wrap your markup with one of those helpers.",
+    "example": "ctx.html(html`<h1>Hello ${name}</h1>`)"
+  },
+  "IBU408": {
+    "title": "Redirect to another site refused",
+    "why": "Redirecting to a URL taken from the request (?next=...) lets attackers bounce your users to phishing pages that look like they came from you.",
+    "fix": "Redirect to paths on your own site. For trusted external targets, check them against an allowlist and pass { allowExternal: true }.",
+    "example": "ctx.redirect('/dashboard')"
+  },
+  "IBU409": {
+    "title": "Method not allowed",
+    "why": "The path exists but not for this HTTP method. The Allow header lists the methods it supports.",
+    "fix": "Use the right method (GET reads, POST creates, PUT/PATCH update, DELETE removes) or add a route for it.",
+    "example": ""
+  },
+  "IBU410": {
+    "title": "Route finished without a response",
+    "why": "The handler returned without calling ctx.json(), ctx.text(), ctx.html(), ctx.redirect() or ctx.empty(). Usually a missing await or return.",
+    "fix": "Make sure every path through the handler sends a response, and await async work first.",
+    "example": "app.get('/api/notes', async ctx => { ctx.json(await db.sql`SELECT * FROM notes`) })"
+  },
+  "IBU411": {
+    "title": "next() called twice",
+    "why": "A middleware called next() more than once, which would run the rest of the chain twice.",
+    "fix": "Call await next() exactly once.",
+    "example": ""
+  },
+  "IBU412": {
+    "title": "Cross-site request blocked (CSRF protection)",
+    "why": "A browser tried to send a POST/PUT/PATCH/DELETE to your server from another website. Without this check, any site could perform actions as your logged-in users.",
+    "fix": "Requests from your own pages, curl and server-to-server calls are allowed automatically. If another site of yours must call this API, add it: createServer({ cors: { origins: ['https://other.example'] } }) or { csrf: { trustedOrigins: [...] } }.",
+    "example": ""
+  },
+  "IBU413": {
+    "title": "Bad request target",
+    "why": "The request line did not start with a path (for example an absolute URL meant for a proxy).",
+    "fix": "Nothing to do in your app; clients must request paths like /api/notes.",
+    "example": ""
+  },
+  "IBU414": {
+    "title": "Request body could not be read",
+    "why": "The client disconnected or sent a broken upload.",
+    "fix": "Retry the request.",
+    "example": ""
+  },
+  "IBU415": {
+    "title": "Validation failed",
+    "why": "The data did not match the schema. The response lists each problem in issues: [{ path, message }].",
+    "fix": "Show the messages next to the matching form fields, or fix the data your page sends.",
+    "example": "const note = await ctx.body(s.object({ text: s.string({ min: 1, max: 200 }) }))"
+  },
+  "IBU416": {
+    "title": "Too many requests",
+    "why": "The client exceeded the rate limit. Retry-After says how many seconds to wait.",
+    "fix": "Slow down, or raise the limit for this route: rateLimit({ limit: 120, windowMs: 60_000 }). Behind a proxy set createServer({ trustProxy: true }) so users are told apart.",
+    "example": ""
+  },
+  "IBU501": {
+    "title": "Weak session secret",
+    "why": "Sessions are signed with this secret; anyone who can guess it can log in as any user.",
+    "fix": "Run `npx ibu secret`, put the value in .env as SESSION_SECRET, and load it with process.env.SESSION_SECRET. Never commit it.",
+    "example": "const sessions = createSessionManager({ secret: process.env.SESSION_SECRET! })"
+  },
+  "IBU502": {
+    "title": "Password does not meet the policy",
+    "why": "Passwords must be 12+ characters (and at most 1 KB). Length matters more than symbols.",
+    "fix": "Show the message to the user. Encourage passphrases.",
+    "example": ""
+  },
+  "IBU503": {
+    "title": "Login required",
+    "why": "The route called sessions.require(ctx) and there is no valid session cookie.",
+    "fix": "Log in first. In the page, catch ApiError with status 401 and show the login form.",
+    "example": ""
+  },
+  "IBU504": {
+    "title": "Session needs a user id",
+    "why": "sessions.issue()/login() needs the user's id as a non-empty string.",
+    "fix": "Pass String(user.id).",
+    "example": "sessions.login(ctx, String(user.id))"
+  },
+  "IBU505": {
+    "title": "Invalid cookie settings",
+    "why": "Browsers reject or weaken cookies with invalid names, SameSite=None without Secure, or __Host- cookies with a domain or non-root path.",
+    "fix": "Use simple names, keep the defaults (HttpOnly, SameSite=Lax, Secure on HTTPS), and only use SameSite=None over HTTPS.",
+    "example": ""
+  },
+  "IBU601": {
+    "title": "Unsafe SQL identifier",
+    "why": "Column and table names cannot be query parameters, so they must be validated separately.",
+    "fix": "Check the name against a list of your columns before calling sql.identifier().",
+    "example": "const column = ['created_at', 'title'].includes(sort) ? sort : 'created_at'"
+  },
+  "IBU602": {
+    "title": "db.query() needs sql``",
+    "why": "Building SQL by gluing strings together is how SQL injection happens. sql`` sends values separately from the query text, so injection is impossible.",
+    "fix": "Use the tagged template. For hand-written parameterised SQL there is db.raw(text, params), which `ibu check` reviews.",
+    "example": "await db.sql`SELECT * FROM notes WHERE id = ${id}`"
+  },
+  "IBU603": {
+    "title": "SQLite not available",
+    "why": "The built-in node:sqlite module needs Node.js 22.13 or newer.",
+    "fix": "Upgrade Node.js, or use memoryDatabase() while prototyping, or another database through createDatabase(adapter).",
+    "example": ""
+  },
+  "IBU701": {
+    "title": "Hard-coded secret",
+    "why": "API keys, passwords and private keys in source code end up in git history, screenshots and AI prompts. Leaked keys are found by bots within minutes.",
+    "fix": "Move it to .env (which is git-ignored) and read process.env.NAME. Rotate the key if it was ever committed or shared.",
+    "example": "const key = process.env.ANTHROPIC_API_KEY"
+  },
+  "IBU702": {
+    "title": "Server secret used in browser code",
+    "why": "Everything in the browser bundle is public. Environment variables or AI SDKs used there would expose your keys to every visitor.",
+    "fix": "Keep secrets and @ibujs/ai in src/server.ts and call your own API route from the page.",
+    "example": "for await (const chunk of api.stream('/api/ask', { prompt })) answer.value += chunk"
+  },
+  "IBU703": {
+    "title": "Raw HTML sink",
+    "why": "innerHTML, outerHTML, insertAdjacentHTML and document.write turn strings into live markup (XSS).",
+    "fix": "Render JSX children instead. Use textContent if you must touch the DOM directly.",
+    "example": "<p>{comment.text}</p>"
+  },
+  "IBU704": {
+    "title": "Dynamic code execution",
+    "why": "eval, new Function and string timers run strings as code; any user data reaching them is remote code execution.",
+    "fix": "Use real functions, JSON.parse for data, and lookup tables instead of building code.",
+    "example": "setTimeout(() => refresh(), 1000)"
+  },
+  "IBU705": {
+    "title": "SQL built from strings",
+    "why": "Interpolating or concatenating values into SQL text allows SQL injection.",
+    "fix": "Use db.sql`... ${value}`, which sends values separately.",
+    "example": "await db.sql`SELECT * FROM users WHERE email = ${email}`"
+  },
+  "IBU706": {
+    "title": "Shell command built from strings",
+    "why": "exec() runs a shell; user data inside the command string can run any command on your server.",
+    "fix": "Use execFile/spawn with an argument array and no shell, and validate inputs against an allowlist.",
+    "example": "execFile('convert', [input, output])"
+  },
+  "IBU707": {
+    "title": "File path from user input",
+    "why": "Passing request data into file paths can read or overwrite files outside the intended folder (../../.env).",
+    "fix": "Map ids to known files, or validate with s.id() and resolve inside a fixed folder. For public files use serveStatic().",
+    "example": "app.use(serveStatic())"
+  },
+  "IBU708": {
+    "title": "Request body used without a schema",
+    "why": "Unvalidated input lets clients send wrong types, huge strings or extra fields such as isAdmin: true.",
+    "fix": "Pass a schema: ctx.body(s.object({ ... })). It also gives you TypeScript types.",
+    "example": "const { text } = await ctx.body(s.object({ text: s.string({ min: 1, max: 200 }) }))"
+  },
+  "IBU709": {
+    "title": "External redirect allowed",
+    "why": "allowExternal disables open-redirect protection.",
+    "fix": "Only use it with a fixed URL or after checking the target against an allowlist.",
+    "example": ""
+  },
+  "IBU710": {
+    "title": "Math.random() on the server",
+    "why": "Math.random() is predictable and must never be used for tokens, ids, codes or passwords.",
+    "fix": "Use crypto.randomUUID() or crypto.randomBytes(32).toString('base64url').",
+    "example": "import { randomUUID } from 'node:crypto'"
+  },
+  "IBU711": {
+    "title": "Weak hash",
+    "why": "MD5 and SHA-1 are broken and far too fast for passwords.",
+    "fix": "Use hashPassword()/verifyPassword() for passwords and SHA-256 for checksums.",
+    "example": ""
+  },
+  "IBU712": {
+    "title": "Security protection disabled",
+    "why": "csrf: false, rejectUnauthorized: false or NODE_TLS_REJECT_UNAUTHORIZED turn off protections against forged requests or intercepted connections.",
+    "fix": "Remove the override; if a specific trusted origin needs access, add it to trustedOrigins instead.",
+    "example": ""
+  },
+  "IBU713": {
+    "title": "CORS allows every origin",
+    "why": "Any website can read responses from this API.",
+    "fix": "List the specific origins that need access.",
+    "example": ""
+  },
+  "IBU714": {
+    "title": "Signal mutated in place",
+    "why": "notes.value.push(x) changes the array but not the signal's identity, so nothing re-renders.",
+    "fix": "Create a new array or object.",
+    "example": "notes.update(list => [...list, note])"
+  },
+  "IBU715": {
+    "title": ".env is not git-ignored",
+    "why": "Your secrets would be committed and pushed.",
+    "fix": "Add .env to .gitignore. If it was already committed, rotate every secret in it.",
+    "example": ""
+  },
+  "IBU716": {
+    "title": "Session secret written in code",
+    "why": "A literal secret is visible to anyone with the code and is the same in every environment.",
+    "fix": "createSessionManager({ secret: process.env.SESSION_SECRET! }) and generate the value with `npx ibu secret`.",
+    "example": ""
+  },
+  "IBU801": {
+    "title": "@ibujs/ai loaded in the browser",
+    "why": "The AI helper needs your API key, which must never reach the browser.",
+    "fix": "Use it only in server code and stream answers to the page through your own route.",
+    "example": "app.post('/api/ask', ai.route({ system: 'You are a helpful cooking assistant.' }))"
+  },
+  "IBU802": {
+    "title": "No Anthropic API key",
+    "why": "AI features call Claude, which needs an API key.",
+    "fix": "Create a key at https://platform.claude.com, add ANTHROPIC_API_KEY=... to .env, and restart. Never put the key in code.",
+    "example": ""
+  },
+  "IBU803": {
+    "title": "AI is busy",
+    "why": "Too many AI requests are running at once, or the AI provider is rate limiting you.",
+    "fix": "Retry shortly. Raise maxConcurrent or requestsPerMinute in ai.route() if your plan allows.",
+    "example": ""
+  },
+  "IBU901": {
+    "title": "Project file missing",
+    "why": "The CLI could not find an entry file listed in ibu.config.json.",
+    "fix": "Check the client/server/html paths in ibu.config.json.",
+    "example": "{ \"client\": \"src/main.tsx\", \"server\": \"src/server.ts\", \"html\": \"index.html\" }"
+  },
+  "IBU902": {
+    "title": "Nothing built yet",
+    "why": "`ibu start` runs the production build, which does not exist yet.",
+    "fix": "Run `npm run build` first.",
+    "example": ""
+  },
+  "IBU903": {
+    "title": "AI suggestion rejected",
+    "why": "The AI proposed writing outside your project, into protected files (.env, node_modules, packages), or code that fails the security check.",
+    "fix": "Rephrase the request, or apply the change by hand after reviewing it.",
+    "example": ""
+  }
+}

@@ -215,8 +215,12 @@ test('logger never logs query strings', async () => {
   const app = createServer();
   app.use(logger({ log: line => lines.push(line) }));
   app.get('/reset', ctx => ctx.json({}));
+  app.post('/fail', () => { throw new HttpError(422, 'nope'); });
   await withServer(app, async base => {
     await fetch(base + '/reset?token=secret123');
+    await fetch(base + '/fail', { method: 'POST' });
+    await new Promise(r => setTimeout(r, 20));
   });
   assert.match(lines[0], /^GET \/reset 200 \d+ms [0-9a-f-]{36}$/);
+  assert.match(lines[1], /^POST \/fail 422 /, 'logs the final status of handled errors');
 });

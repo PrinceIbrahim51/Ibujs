@@ -7,12 +7,24 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "jsxImportSource": "@ibujs/ui",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["node"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node"
+    ],
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowImportingTsExtensions": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["packages/**/*.ts", "packages/**/*.tsx", "examples/**/*.ts", "examples/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"]
+  "include": [
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "demo/src/**/*.tsx"
+  ]
 }
