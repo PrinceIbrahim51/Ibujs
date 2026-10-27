@@ -1,9 +1,13 @@
 {
   "name": "@ibujs/ui",
-  "version": "0.5.0",
+  "version": "0.6.0",
+  "description": "IbuJS UI: signals, JSX and a secure-by-default DOM renderer",
+  "license": "MIT",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./jsx-runtime": "./src/jsx-runtime.ts"
+    "./jsx-runtime": "./src/jsx-runtime.ts",
+    "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts"
   }
 }

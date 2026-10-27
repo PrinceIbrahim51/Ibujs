@@ -1,6 +1,6 @@
 {
   "name": "ibujs-workspace",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -11,15 +11,19 @@
     "dev": "ibu dev",
     "build": "ibu build",
     "start": "ibu start",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --test tests/*.test.ts tests/*.test.tsx",
+    "test:e2e": "node tests/e2e/security.e2e.mjs",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm test && npm run build"
+    "security": "ibu check",
+    "demo": "node scripts/build-demo.mjs",
+    "check": "npm run typecheck && npm test && npm run security && npm run build"
   },
   "devDependencies": {
-    "@types/node": "^22.15.0",
-    "esbuild": "^0.25.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.8.0"
+    "@types/node": "^22.20.5",
+    "esbuild": "^0.28.2",
+    "happy-dom": "^21.0.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=20.19"

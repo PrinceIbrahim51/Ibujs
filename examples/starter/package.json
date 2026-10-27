@@ -1,1 +1,10 @@
-{"name":"@ibujs/starter","version":"0.1.0","private":true,"type":"module","dependencies":{"@ibujs/ui":"0.1.0","@ibujs/server":"0.1.0"}}
+{
+  "name": "@ibujs/starter",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ibujs/server": "*",
+    "@ibujs/ui": "*"
+  }
+}
