@@ -25,7 +25,9 @@ const HELP = `IbuJS CLI
   ibu build                Production build into dist/
   ibu start                Run the production build
   ibu check [paths]        Offline security check (--json for machine output)
-  ibu ai "<what to do>"    Ask Claude to change your code (--dry-run, --yes, --effort=low|medium|high|xhigh|max)
+  ibu ai "<what to do>"    Ask Claude to change your code, then typecheck + security-check it and let
+                           Claude fix what fails (--dry-run, --yes, --branch[=name], --test, --fix-rounds=N,
+                           --no-verify, --effort=low|medium|high|xhigh|max)
   ibu review [files]       AI security and bug review of your code
   ibu explain <code|text>  Explain an error (--ai for a tailored answer, --list for all codes)
   ibu secret               Print a strong random secret for SESSION_SECRET
@@ -93,7 +95,13 @@ async function main() {
     }
     case 'ai': {
       const config = await loadConfig(root);
-      return generate({ root, config, task: args.join(' '), yes: flags.has('--yes'), dryRun: flags.has('--dry-run'), force: flags.has('--force'), effort: option('effort', 'high') });
+      const rounds = Number(option('fix-rounds', '2'));
+      return generate({
+        root, config, task: args.join(' '),
+        yes: flags.has('--yes'), dryRun: flags.has('--dry-run'), force: flags.has('--force'), effort: option('effort', 'high'),
+        fixRounds: Number.isInteger(rounds) && rounds >= 0 && rounds <= 5 ? rounds : 2,
+        verify: !flags.has('--no-verify'), runTests: flags.has('--test'), branch: option('branch') ?? flags.has('--branch')
+      });
     }
     case 'review': {
       const config = await loadConfig(root);

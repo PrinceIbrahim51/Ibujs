@@ -1,9 +1,11 @@
 // AI commands for the CLI: `ibu ai "<task>"`, `ibu review [files]`, `ibu explain <error> --ai`.
 // Every change the AI proposes is path-checked and security-linted before anything is written,
 // and nothing is written without your confirmation (or --yes).
+import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
+import { createRequire } from 'node:module';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { scanProject, scanSource } from './check.mjs';
@@ -42,7 +44,15 @@ function explainApiError(err, Anthropic) {
   return null;
 }
 
-async function callClaude({ system, user, effort, maxTokens, schema, onText }) {
+// Assistant turns are sent back exactly as received (append-only), except that after a mid-answer
+// safety fallback the declined attempt's thinking and tool blocks are dropped, as the API requires.
+export function echoContent(content) {
+  const lastFallback = content.map(block => block.type).lastIndexOf('fallback');
+  if (lastFallback < 0) return content;
+  return content.filter((block, i) => i > lastFallback || !['thinking', 'redacted_thinking', 'tool_use', 'server_tool_use'].includes(block.type));
+}
+
+async function callClaude({ system, user, messages, effort, maxTokens, schema, onText }) {
   const { client, Anthropic } = await loadClient();
   try {
     const stream = client.beta.messages.stream({
@@ -51,7 +61,7 @@ async function callClaude({ system, user, effort, maxTokens, schema, onText }) {
       // The framework reference in `system` is identical between runs, so it is cached (cheaper, faster).
       cache_control: { type: 'ephemeral' },
       system,
-      messages: [{ role: 'user', content: user }],
+      messages: messages ?? [{ role: 'user', content: user }],
       output_config: { effort, ...(schema ? { format: { type: 'json_schema', schema } } : {}) },
       // If a safety classifier declines, Anthropic retries on its recommended fallback model.
       betas: ['server-side-fallback-2026-07-01'],
@@ -61,7 +71,8 @@ async function callClaude({ system, user, effort, maxTokens, schema, onText }) {
     const message = await stream.finalMessage();
     if (message.stop_reason === 'refusal') throw new CliError('The AI declined this request. Try rephrasing it.');
     if (message.stop_reason === 'max_tokens') throw new CliError('The answer was too long and got cut off. Ask for a smaller change.');
-    return message.content.filter(block => block.type === 'text').map(block => block.text).join('');
+    const text = message.content.filter(block => block.type === 'text').map(block => block.text).join('');
+    return messages ? { text, content: message.content } : text;
   } catch (err) {
     if (err instanceof CliError) throw err;
     const friendly = explainApiError(err, Anthropic);
@@ -167,24 +178,53 @@ async function confirm(question) {
   try { return /^y(es)?$/i.test((await rl.question(question)).trim()); } finally { rl.close(); }
 }
 
-export async function generate({ root, config, task, yes = false, dryRun = false, force = false, effort = 'high' }) {
-  if (!task?.trim()) throw new CliError('Describe what you want, e.g.: npx ibu ai "add a page that lists my notes with a delete button"');
-  const { files, skipped } = await projectFiles(root, config);
-  say(dim(`Asking Claude (${MODEL}) with ${files.length} project files${skipped.length ? `, ${skipped.length} too large to include` : ''}…`));
-  let received = 0;
-  const raw = await callClaude({
-    system: GENERATE_SYSTEM + '\n\n' + await frameworkGuide(root),
-    user: `<project_files>\n${files.map(fileBlock).join('\n')}\n</project_files>\n\n<task>\n${task}\n</task>`,
-    effort,
-    maxTokens: 64_000,
-    schema: GENERATE_SCHEMA,
-    onText: text => { received += text.length; if (process.stdout.isTTY) process.stdout.write(`\r${dim(`  generating… ${received} characters`)}`); }
+function run(command, args, cwd, timeoutMs) {
+  return new Promise(done => {
+    execFile(command, args, { cwd, timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024, env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' } }, (err, stdout, stderr) => {
+      done({ ok: !err, output: `${stdout}${stderr}`.trim() || (err ? String(err.message) : '') });
+    });
   });
-  if (process.stdout.isTTY) process.stdout.write('\r\x1b[K');
+}
+
+function findTsc(root) {
+  for (const from of [join(root, 'package.json'), fileURLToPath(import.meta.url)]) {
+    try { return createRequire(from).resolve('typescript/bin/tsc'); } catch { /* try the next location */ }
+  }
+  return null;
+}
+
+// Static checks only by default (nothing generated is executed); --test also runs the test suite.
+export async function verifyProject(root, config, { runTests = false } = {}) {
+  const failures = [];
+  const tsc = existsSync(join(root, 'tsconfig.json')) ? findTsc(root) : null;
+  if (tsc) {
+    const result = await run(process.execPath, [tsc, '--noEmit', '-p', root], root, 180_000);
+    if (!result.ok) failures.push({ check: 'typecheck (tsc --noEmit)', output: result.output });
+  }
+  const targets = [...new Set([config.client, config.server].map(p => dirname(p)))];
+  const lint = await scanProject(root, targets);
+  const lintErrors = lint.findings.filter(f => f.severity === 'error');
+  if (lintErrors.length) failures.push({ check: 'security check (ibu check)', output: lintErrors.map(f => `${f.file}:${f.line} ${f.rule} ${f.message}: ${f.snippet}`).join('\n') });
+  if (runTests) {
+    const pkg = JSON.parse(await readIfExists(join(root, 'package.json')) || '{}');
+    if (pkg.scripts?.test) {
+      const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+      const result = await run(npm, ['test', '--silent'], root, 300_000);
+      if (!result.ok) failures.push({ check: 'tests (npm test)', output: result.output });
+    }
+  }
+  return { ok: !failures.length, failures, checked: [tsc ? 'typecheck' : null, 'security check', runTests ? 'tests' : null].filter(Boolean) };
+}
+
+function parsePlan(raw) {
   let plan;
   try { plan = JSON.parse(raw); } catch { throw new CliError('The AI response was not valid JSON. Please try again.'); }
   if (!plan || !Array.isArray(plan.files)) throw new CliError('The AI response had an unexpected shape. Please try again.');
+  return plan;
+}
 
+// Shows a plan, checks every file, and writes it only with consent. Shared by the first change and every fix round.
+async function applyPlan(root, plan, { yes, dryRun, force, question }) {
   say(`\n${plan.summary}\n`);
   const accepted = [];
   let blocked = false;
@@ -199,33 +239,99 @@ export async function generate({ root, config, task, yes = false, dryRun = false
     const before = existsSync(full) ? await readFile(full, 'utf8') : null;
     const { added, removed } = lineChanges(before ?? '', file.content);
     const issues = scanSource(file.content, file.path);
-    const errors = issues.filter(i => i.severity === 'error');
     say(`  ${before === null ? '+ new     ' : '~ modified'} ${file.path}  ${dim(`+${added} -${removed} lines`)}`);
     for (const issue of issues) say(`      ${issue.severity === 'error' ? '✖' : '!'} ${issue.rule} ${issue.message} (line ${issue.line}): ${issue.snippet}`);
-    if (errors.length) blocked = true;
-    accepted.push({ full, path: file.path, content: file.content, errors });
+    if (issues.some(i => i.severity === 'error')) blocked = true;
+    accepted.push({ full, path: posix.normalize(file.path), content: file.content });
   }
   if (plan.notes?.length) say(`\nNotes:\n${plan.notes.map(n => '  • ' + n).join('\n')}`);
   if (dryRun) {
     for (const file of accepted) say(`\n${'─'.repeat(60)}\n${file.path}\n${'─'.repeat(60)}\n${file.content}`);
     say('\nDry run: nothing was written.');
-    return { written: [] };
+    return { written: [], stop: true };
   }
-  if (!accepted.length) { say('\nNothing to write.'); return { written: [] }; }
+  if (!accepted.length) { say('\nNothing to write.'); return { written: [], stop: true }; }
   if (blocked && !force) {
     say('\nSome proposed changes failed the security check (✖ above), so nothing was written.\nAsk again with more detail, or re-run with --force after reviewing them yourself (--dry-run shows the code).');
-    return { written: [], blocked: true };
+    return { written: [], blocked: true, stop: true };
   }
-  if (!yes && !await confirm(`\nApply ${accepted.length} file change${accepted.length === 1 ? '' : 's'}? [y/N] `)) {
+  if (!yes && !await confirm(question(accepted.length))) {
     say(process.stdin.isTTY ? 'Cancelled. Nothing was written.' : 'Not a terminal, so nothing was written. Re-run with --yes to apply.');
-    return { written: [] };
+    return { written: [], stop: true };
   }
   for (const file of accepted) {
     await mkdir(dirname(file.full), { recursive: true });
     await writeFile(file.full, file.content);
   }
-  say(`\n✔ Wrote ${accepted.length} file${accepted.length === 1 ? '' : 's'}. Review the changes (git diff), then run npm run dev.`);
-  return { written: accepted.map(f => f.path) };
+  say(`✔ Wrote ${accepted.length} file${accepted.length === 1 ? '' : 's'}.`);
+  return { written: accepted.map(f => f.path), stop: false };
+}
+
+const git = (root, args) => run('git', args, root, 60_000);
+
+async function startBranch(root, task, requested) {
+  if (!(await git(root, ['rev-parse', '--is-inside-work-tree'])).ok) { say(dim('Not a git repository, so --branch was skipped.')); return null; }
+  const slug = task.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'change';
+  const name = typeof requested === 'string' && requested ? requested : `ibu-ai/${slug}-${Date.now().toString(36)}`;
+  if (!(await git(root, ['check-ref-format', '--branch', name])).ok) throw new CliError(`"${name}" is not a valid branch name.`);
+  const created = await git(root, ['switch', '-c', name]);
+  if (!created.ok) throw new CliError(`Could not create branch ${name}: ${created.output}`);
+  say(dim(`Working on new branch ${name}`));
+  return name;
+}
+
+export async function generate({ root, config, task, yes = false, dryRun = false, force = false, effort = 'high', fixRounds = 2, verify = true, runTests = false, branch }) {
+  if (!task?.trim()) throw new CliError('Describe what you want, e.g.: npx ibu ai "add a page that lists my notes with a delete button"');
+  const { files, skipped } = await projectFiles(root, config);
+  const system = GENERATE_SYSTEM + '\n\n' + await frameworkGuide(root);
+  const messages = [{ role: 'user', content: `<project_files>\n${files.map(fileBlock).join('\n')}\n</project_files>\n\n<task>\n${task}\n</task>` }];
+  const branchName = branch && !dryRun ? await startBranch(root, task, branch) : null;
+  const written = new Set();
+  let verification = null;
+  for (let round = 0; ; round++) {
+    say(dim(round === 0
+      ? `Asking Claude (${MODEL}) with ${files.length} project files${skipped.length ? `, ${skipped.length} too large to include` : ''}…`
+      : `Asking Claude to fix the problems (round ${round} of ${fixRounds})…`));
+    let received = 0;
+    const reply = await callClaude({
+      system,
+      messages,
+      effort,
+      maxTokens: 64_000,
+      schema: GENERATE_SCHEMA,
+      onText: text => { received += text.length; if (process.stdout.isTTY) process.stdout.write(`\r${dim(`  generating… ${received} characters`)}`); }
+    });
+    if (process.stdout.isTTY) process.stdout.write('\r\x1b[K');
+    const plan = parsePlan(reply.text);
+    const applied = await applyPlan(root, plan, {
+      yes, dryRun, force,
+      question: n => round === 0 ? `\nApply ${n} file change${n === 1 ? '' : 's'}? [y/N] ` : `\nApply this fix (${n} file${n === 1 ? '' : 's'})? [y/N] `
+    });
+    applied.written.forEach(path => written.add(path));
+    if (applied.stop) break;
+    if (!verify) break;
+    say(dim('Checking the result…'));
+    verification = await verifyProject(root, config, { runTests });
+    if (verification.ok) { say(`✔ ${verification.checked.join(', ')} passed.`); break; }
+    say(`\n✖ ${verification.failures.map(f => f.check).join(', ')} failed:`);
+    for (const failure of verification.failures) say(`\n${failure.check}:\n${failure.output.split('\n').slice(0, 15).map(l => '  ' + l).join('\n')}`);
+    if (round >= fixRounds) { say(`\nStopped after ${fixRounds} fix round${fixRounds === 1 ? '' : 's'}. Fix the remaining problems by hand, or run ibu ai again with more detail.`); break; }
+    if (!yes && !await confirm('\nAsk Claude to fix these problems? [y/N] ')) break;
+    // Append-only conversation: the previous answer exactly as returned, then what went wrong.
+    const current = [];
+    for (const path of written) current.push({ path, text: await readFile(resolve(root, path), 'utf8') });
+    const report = verification.failures.map(f => `<check name="${f.check}">\n${f.output.slice(0, 12_000)}\n</check>`).join('\n');
+    messages.push({ role: 'assistant', content: echoContent(reply.content) });
+    messages.push({ role: 'user', content: `Your change was applied, but these checks failed:\n<verification_failures>\n${report}\n</verification_failures>\n\n<current_files>\n${current.map(fileBlock).join('\n')}\n</current_files>\n\nFix the problems your change caused. Return only the files that need to change, complete.` });
+  }
+  if (branchName && written.size) {
+    await git(root, ['add', '--', ...written]);
+    const committed = await git(root, ['commit', '-m', `ibu ai: ${task.slice(0, 60)}`, '-m', `Generated with npx ibu ai (${MODEL}).${verification ? ` Checks: ${verification.ok ? 'passed' : 'failing'}.` : ''}`]);
+    say(committed.ok ? `✔ Committed to branch ${branchName}. Review with: git diff HEAD~1` : `Could not commit (${committed.output.split('\n')[0]}). The files are written; commit them yourself.`);
+  } else if (written.size) {
+    say('Review the changes with git diff, then run npm run dev.');
+  }
+  return { written: [...written], verification };
 }
 
 const REVIEW_SYSTEM = `You are a senior application-security reviewer for IbuJS projects. Review the given files for security vulnerabilities first, then correctness bugs that would break the app.

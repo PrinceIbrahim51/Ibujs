@@ -165,3 +165,68 @@ test('@ibujs/ai route: streams answers, validates input, limits abuse, stops bil
     assert.equal(mock.closedEarly(), 1);
   } finally { mock.close(); }
 });
+
+// @ts-expect-error plain JavaScript module without type declarations
+import { echoContent } from '../packages/cli/src/ai.mjs';
+
+async function plainProject() {
+  const dir = await mkdtemp(join(tmpdir(), 'ibu-loop-'));
+  await mkdir(join(dir, 'src'));
+  await writeFile(join(dir, 'src', 'main.ts'), 'export const a = 1;\n');
+  await writeFile(join(dir, 'src', 'server.ts'), 'export const b = 2;\n');
+  await writeFile(join(dir, 'index.html'), '<!doctype html><div id="app"></div>');
+  await writeFile(join(dir, 'ibu.config.json'), '{"client":"src/main.ts","server":"src/server.ts"}');
+  await writeFile(join(dir, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, noEmit: true, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', types: [] }, include: ['src'] }));
+  return dir;
+}
+
+test('ibu ai: typecheck failures go back to Claude in the same conversation and get fixed', async () => {
+  const replies = [
+    plan([{ path: 'src/total.ts', content: "export const total: number = 'not a number';\n" }]),
+    plan([{ path: 'src/total.ts', content: 'export const total: number = 42;\n' }])
+  ];
+  let i = 0;
+  const mock = await mockAnthropic(() => ({ text: replies[i++] }));
+  const dir = await plainProject();
+  try {
+    const result = await runCli(dir, ['ai', 'add a total', '--yes'], { ANTHROPIC_BASE_URL: mock.url, ANTHROPIC_API_KEY: 'test-key' });
+    assert.equal(result.code, 0, result.out);
+    assert.match(result.out, /typecheck \(tsc --noEmit\) failed/);
+    assert.match(result.out, /TS2322/);
+    assert.match(result.out, /round 1 of 2/);
+    assert.match(result.out, /✔ typecheck, security check passed/);
+    assert.equal(await readFile(join(dir, 'src', 'total.ts'), 'utf8'), 'export const total: number = 42;\n');
+    assert.equal(mock.requests.length, 2);
+    const second = mock.requests[1].body as Record<string, any>;
+    assert.equal(second.messages.length, 3, 'append-only: task, previous answer, failures');
+    assert.equal(second.messages[0].content, (mock.requests[0].body as Record<string, any>).messages[0].content);
+    assert.equal(second.messages[1].role, 'assistant');
+    assert.equal(second.messages[1].content[0].text, replies[0], 'previous answer echoed exactly');
+    assert.match(second.messages[2].content, /<verification_failures>[\s\S]*TS2322[\s\S]*<current_files>[\s\S]*not a number/);
+  } finally { mock.close(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test('ibu ai --branch commits only the generated files on a new branch', async () => {
+  const mock = await mockAnthropic(() => ({ text: plan([{ path: 'src/total.ts', content: 'export const total = 1;\n' }]) }));
+  const dir = await plainProject();
+  const gitEnv = { GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'Test', GIT_COMMITTER_EMAIL: 'test@example.com' };
+  const git = (...args: string[]) => new Promise<string>((ok, fail) => execFile('git', args, { cwd: dir, env: { ...process.env, ...gitEnv } }, (err, out) => err ? fail(err) : ok(out.trim())));
+  try {
+    await git('init', '-q', '-b', 'main');
+    await git('add', '-A');
+    await git('commit', '-q', '-m', 'initial');
+    await writeFile(join(dir, 'notes.txt'), 'unrelated local change');
+    const result = await runCli(dir, ['ai', 'Add a total!', '--yes', '--branch'], { ANTHROPIC_BASE_URL: mock.url, ANTHROPIC_API_KEY: 'test-key', ...gitEnv });
+    assert.equal(result.code, 0, result.out);
+    assert.match(await git('branch', '--show-current'), /^ibu-ai\/add-a-total-[a-z0-9]+$/);
+    assert.match(await git('log', '-1', '--format=%s'), /^ibu ai: Add a total!$/);
+    assert.equal(await git('show', '--name-only', '--format=', 'HEAD'), 'src/total.ts', 'unrelated files are not committed');
+  } finally { mock.close(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test('echoContent drops the declined attempt\'s thinking after a safety fallback', () => {
+  const content = [{ type: 'thinking', thinking: '' }, { type: 'text', text: 'partial' }, { type: 'fallback' }, { type: 'thinking', thinking: '' }, { type: 'text', text: 'rest' }];
+  assert.deepEqual(echoContent(content).map((b: { type: string }) => b.type), ['text', 'fallback', 'thinking', 'text']);
+  const plain = [{ type: 'thinking', thinking: '' }, { type: 'text', text: 'x' }];
+  assert.equal(echoContent(plain), plain);
+});
