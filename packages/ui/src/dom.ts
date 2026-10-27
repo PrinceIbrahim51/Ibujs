@@ -1,7 +1,7 @@
 import { DEV, IbuError } from './errors.js';
 import { classNames, cssName, isEventProp, sanitizeAttribute, type ClassValue } from './security.js';
 import { isSignal, track, type Signal, type Subscribable } from './signals.js';
-import { resolve, type Child, type Component, type Props, type ResolvedElement, type ResolvedNode } from './vnode.js';
+import { flatten, type Child, type Component, type Props, type Shallow, type ShallowComponent, type ShallowElement } from './vnode.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const XLINK_NS = 'http://www.w3.org/1999/xlink';
@@ -9,7 +9,20 @@ const XLINK_NS = 'http://www.w3.org/1999/xlink';
 const LIVE_PROPS = new Set(['value', 'checked', 'selected', 'indeterminate', 'muted']);
 const UNITLESS = new Set(['opacity', 'zIndex', 'flex', 'flexGrow', 'flexShrink', 'order', 'fontWeight', 'lineHeight', 'zoom', 'gridRow', 'gridColumn', 'columnCount', 'tabSize', 'aspectRatio', 'scale']);
 
-type Entry = { r: ResolvedNode; node: Node; children: Entry[] };
+// The live tree. Components are real instances with their own signal subscriptions, so a change
+// re-renders only the components that read the changed signal.
+interface AppState { onError: (error: unknown) => void; failed: Set<CompEntry> }
+interface Base { parent: Container; app: AppState; depth: number }
+interface TextEntry extends Base { kind: 'text'; value: string; node: Text }
+interface ElEntry extends Base { kind: 'el'; tag: string; key: unknown; props: Props; node: Element; children: Entry[]; svg: boolean }
+interface CompEntry extends Base {
+  kind: 'comp'; fn: Component; key: unknown; props: Props; children: Entry[]; svg: boolean;
+  el: Node; deps: Set<Subscribable>; extraDeps: Subscribable[]; unsubs: Array<() => void>;
+  listener: () => void; dirty: boolean; disposed: boolean;
+}
+interface RootEntry { kind: 'root'; node: Element; children: Entry[]; svg: boolean; app: AppState; depth: number }
+type Entry = TextEntry | ElEntry | CompEntry;
+type Container = ElEntry | CompEntry | RootEntry;
 
 // One shared listener per event type; re-renders swap the handler without touching the DOM.
 const handlers = new WeakMap<Element, Map<string, (event: Event) => void>>();
@@ -104,55 +117,246 @@ function applyProps(el: Element, tag: string, next: Props, prev?: Props) {
   else if (prev && 'bind' in prev) bindings.delete(el);
 }
 
-function mount(r: ResolvedNode, svg: boolean): Entry {
-  if (typeof r === 'string') return { r, node: document.createTextNode(r), children: [] };
-  const inSvg = svg || r.tag === 'svg';
-  const el = inSvg ? document.createElementNS(SVG_NS, r.tag) : document.createElement(r.tag);
-  const children = r.children.map(c => mount(c, inSvg && r.tag !== 'foreignObject'));
-  el.append(...children.map(c => c.node));
-  applyProps(el, r.tag, r.props);
-  return { r, node: el, children };
-}
-
-const keyOf = (r: ResolvedNode) => typeof r === 'string' ? undefined : r.props.key;
 const warned = new Set<string>();
 function warnOnce(message: string) { if (!warned.has(message)) { warned.add(message); console.warn(message); } }
 
-function reconcile(parent: Node, old: Entry[], next: ResolvedNode[], svg: boolean): Entry[] {
+// ---- Hydration: adopting server-rendered DOM instead of recreating it ----
+
+class HydrationMismatch extends Error {}
+interface Hydrator { parent: Node; next: Node | null }
+const isBlank = (node: Node) => node.nodeType === 8 || (node.nodeType === 3 && !(node as Text).data.trim());
+function describeNode(node: Node | null) {
+  if (!node) return 'nothing';
+  if (node.nodeType === 3) return `text ${JSON.stringify((node as Text).data.slice(0, 40))}`;
+  return node.nodeType === 1 ? `<${(node as Element).localName}>` : node.nodeName;
+}
+function claimText(hy: Hydrator, value: string): Text {
+  let node = hy.next;
+  while (node && node.nodeType === 8) node = node.nextSibling;
+  if (!node || node.nodeType !== 3) throw new HydrationMismatch(`expected text ${JSON.stringify(value)}, found ${describeNode(node)}`);
+  const text = node as Text;
+  if (text.data === value) { hy.next = text.nextSibling; return text; }
+  // The server writes adjacent strings as one text node; split it to match.
+  if (text.data.startsWith(value)) { hy.next = text.splitText(value.length); return text; }
+  throw new HydrationMismatch(`expected text ${JSON.stringify(value)}, found ${describeNode(text)}`);
+}
+function claimElement(hy: Hydrator, tag: string, svg: boolean): Element {
+  let node = hy.next;
+  while (node && isBlank(node)) node = node.nextSibling;
+  const el = node as Element | null;
+  if (!el || el.nodeType !== 1 || el.localName !== (svg ? tag : tag.toLowerCase()) || (el.namespaceURI === SVG_NS) !== svg) {
+    throw new HydrationMismatch(`expected <${tag}>, found ${describeNode(node)}`);
+  }
+  hy.next = el.nextSibling;
+  return el;
+}
+function finishHydration(hy: Hydrator, tag: string) {
+  // A <textarea>'s text is its default value, not children.
+  if (tag === 'textarea') return;
+  let node = hy.next;
+  while (node) {
+    const next = node.nextSibling;
+    if (!isBlank(node)) throw new HydrationMismatch(`unexpected ${describeNode(node)} at the end of <${tag}>`);
+    hy.parent.removeChild(node);
+    node = next;
+  }
+}
+
+// ---- The component tree ----
+
+function domNodes(entry: Entry, out: Node[] = []): Node[] {
+  if (entry.kind === 'comp') for (const child of entry.children) domNodes(child, out);
+  else out.push(entry.node);
+  return out;
+}
+function firstNode(entry: Entry): Node | null {
+  if (entry.kind !== 'comp') return entry.node;
+  for (const child of entry.children) { const node = firstNode(child); if (node) return node; }
+  return null;
+}
+// The DOM node right after this entry's nodes, so a component can re-insert its own nodes in place.
+function nextNodeAfter(entry: Entry): Node | null {
+  let current: Entry = entry;
+  for (;;) {
+    const parent: Container = current.parent;
+    const siblings = parent.children;
+    for (let i = siblings.indexOf(current) + 1; i < siblings.length; i++) {
+      const node = firstNode(siblings[i]);
+      if (node) return node;
+    }
+    if (parent.kind !== 'comp') return null;
+    current = parent;
+  }
+}
+function placeNodes(parent: Node, nodes: Node[], before: Node | null) {
+  let cursor = before;
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const node = nodes[i];
+    if (node.parentNode !== parent || node.nextSibling !== cursor) parent.insertBefore(node, cursor);
+    cursor = node;
+  }
+}
+// Bumped whenever nodes are created, removed or reordered, so unchanged subtrees skip placement work.
+let mutations = 0;
+function appendNodes(parent: Node, entry: Entry) {
+  if (entry.kind === 'comp') for (const child of entry.children) appendNodes(parent, child);
+  else parent.appendChild(entry.node);
+}
+
+function domParent(container: Container): Node {
+  return container.kind === 'comp' ? container.el : container.node;
+}
+
+function unmount(entry: Entry, removeDom: boolean) {
+  mutations++;
+  if (entry.kind === 'comp') {
+    entry.disposed = true;
+    entry.unsubs.forEach(u => u());
+    entry.unsubs = [];
+    dirty.delete(entry);
+    entry.app.failed.delete(entry);
+    for (const child of entry.children) unmount(child, removeDom);
+    return;
+  }
+  if (entry.kind === 'el') {
+    for (const child of entry.children) unmount(child, false);
+    if (entry.props.ref) setRef(entry.props.ref, null);
+  }
+  if (removeDom) entry.node.parentNode?.removeChild(entry.node);
+}
+
+function shallowEqual(a: Props, b: Props) {
+  const ka = Object.keys(a), kb = Object.keys(b);
+  return ka.length === kb.length && ka.every(k => Object.is(a[k], b[k]));
+}
+const keyOfShallow = (s: Shallow) => typeof s === 'string' ? undefined : s.key;
+const keyOfEntry = (e: Entry) => e.kind === 'text' ? undefined : e.key;
+function compatible(entry: Entry, s: Shallow) {
+  if (typeof s === 'string') return entry.kind === 'text';
+  if (s.kind === 'el') return entry.kind === 'el' && entry.tag === s.tag;
+  return entry.kind === 'comp' && entry.fn === s.fn;
+}
+
+function mount(s: Shallow, parent: Container, hy: Hydrator | null): Entry {
+  mutations++;
+  if (typeof s === 'string') return { kind: 'text', value: s, node: hy ? claimText(hy, s) : document.createTextNode(s), parent, app: parent.app, depth: parent.depth };
+  if (s.kind === 'el') return mountElement(s, parent, hy);
+  const entry: CompEntry = {
+    kind: 'comp', fn: s.fn, key: s.key, props: s.props, children: [], svg: parent.svg, el: domParent(parent), parent, app: parent.app,
+    depth: parent.depth + 1, deps: new Set(), extraDeps: [], unsubs: [], listener: () => invalidate(entry), dirty: false, disposed: false
+  };
+  renderComponent(entry, s.props, false, hy);
+  return entry;
+}
+
+function mountElement(s: ShallowElement, parent: Container, hy: Hydrator | null): ElEntry {
+  const svg = parent.svg || s.tag === 'svg';
+  const el = hy ? claimElement(hy, s.tag, svg) : svg ? document.createElementNS(SVG_NS, s.tag) : document.createElement(s.tag);
+  const entry: ElEntry = { kind: 'el', tag: s.tag, key: s.key, props: s.props, node: el, children: [], svg: svg && s.tag !== 'foreignObject', parent, app: parent.app, depth: parent.depth };
+  const childHy = hy ? { parent: el, next: el.firstChild } : null;
+  reconcileChildren(entry, s.children, childHy, false);
+  if (childHy) finishHydration(childHy, s.tag);
+  else for (const child of entry.children) appendNodes(el, child);
+  applyProps(el, s.tag, s.props);
+  return entry;
+}
+
+function patch(entry: Entry, s: Shallow, force: boolean) {
+  if (entry.kind === 'text') {
+    if (entry.value !== s) entry.node.data = s as string;
+    entry.value = s as string;
+  } else if (entry.kind === 'el') {
+    const next = s as ShallowElement;
+    const before = mutations;
+    reconcileChildren(entry, next.children, null, force);
+    if (mutations !== before) placeNodes(entry.node, entry.children.flatMap(c => domNodes(c)), null);
+    applyProps(entry.node, next.tag, next.props, entry.props);
+    entry.props = next.props;
+    entry.key = next.key;
+  } else {
+    const next = s as ShallowComponent;
+    entry.key = next.key;
+    // Unchanged props and no signal changes: skip the component entirely.
+    if (force || entry.dirty || !shallowEqual(entry.props, next.props)) renderComponent(entry, next.props, false, null, force);
+  }
+}
+
+// Keyed diff of one container's children. DOM placement is left to the caller, because a
+// component's nodes live inside an ancestor element alongside its siblings' nodes.
+function reconcileChildren(container: Container, next: Shallow[], hy: Hydrator | null, force: boolean) {
+  const old = container.children;
+  if (!old.length) { container.children = next.map(s => mount(s, container, hy)); return; }
   const keyed = new Map<unknown, Entry>();
-  for (const entry of old) { const key = keyOf(entry.r); if (key != null) keyed.set(key, entry); }
+  for (const entry of old) { const key = keyOfEntry(entry); if (key != null) keyed.set(key, entry); }
   const used = new Set<Entry>();
   const seen = DEV ? new Set<unknown>() : undefined;
-  const result = next.map((r, index) => {
-    const key = keyOf(r);
+  const result = next.map((s, index) => {
+    const key = keyOfShallow(s);
     if (seen && key != null) {
       if (seen.has(key)) warnOnce(`[IBU204] Two siblings share the key ${JSON.stringify(key)}; list items may be reused incorrectly. Use a unique id per item.\n  More: npx ibu explain IBU204`);
       seen.add(key);
     }
     let previous = key != null ? keyed.get(key) : old[index];
-    if (key == null && previous && keyOf(previous.r) != null) previous = undefined;
-    if (previous && used.has(previous)) previous = undefined;
-    if (previous) used.add(previous);
-    if (!previous || typeof previous.r !== typeof r || (typeof r !== 'string' && (previous.r as ResolvedElement).tag !== r.tag)) return mount(r, svg);
-    if (typeof r === 'string') {
-      if (previous.r !== r) (previous.node as Text).data = r;
-      previous.r = r;
-      return previous;
-    }
-    const el = previous.node as Element;
-    const inSvg = svg || r.tag === 'svg';
-    previous.children = reconcile(el, previous.children, r.children, inSvg && r.tag !== 'foreignObject');
-    applyProps(el, r.tag, r.props, (previous.r as ResolvedElement).props);
-    previous.r = r;
+    if (key == null && previous && keyOfEntry(previous) != null) previous = undefined;
+    if (previous && (used.has(previous) || !compatible(previous, s))) previous = undefined;
+    if (!previous) return mount(s, container, hy);
+    used.add(previous);
+    patch(previous, s, force);
     return previous;
   });
-  result.forEach((entry, i) => {
-    const at = parent.childNodes[i];
-    if (at !== entry.node) parent.insertBefore(entry.node, at ?? null);
-  });
-  const retained = new Set(result.map(x => x.node));
-  for (const entry of old) if (!retained.has(entry.node) && entry.node.parentNode === parent) parent.removeChild(entry.node);
-  return result;
+  for (const entry of old) if (!used.has(entry)) unmount(entry, true);
+  if (result.length !== old.length || result.some((entry, i) => entry !== old[i])) mutations++;
+  container.children = result;
+}
+
+function subscribe(entry: CompEntry, deps: Set<Subscribable>) {
+  entry.unsubs.forEach(u => u());
+  entry.deps = deps;
+  entry.unsubs = [...deps].map(d => d.subscribe(entry.listener));
+}
+
+// Renders one component in its own tracking scope. If it throws, its previous output stays on
+// screen (a per-component error boundary) and the error is reported.
+function renderComponent(entry: CompEntry, props: Props, self: boolean, hy: Hydrator | null, force = false) {
+  entry.props = props;
+  entry.dirty = false;
+  dirty.delete(entry);
+  const deps = new Set<Subscribable>(entry.extraDeps);
+  const before = mutations;
+  try {
+    track(() => reconcileChildren(entry, flatten(entry.fn(props)), hy, force), deps);
+  } catch (error) {
+    if (error instanceof HydrationMismatch) throw error;
+    subscribe(entry, new Set([...entry.deps, ...deps]));
+    entry.app.failed.add(entry);
+    entry.app.onError(error);
+    return;
+  }
+  subscribe(entry, deps);
+  if (entry.app.failed.delete(entry) && DEV && !entry.app.failed.size) document.getElementById(OVERLAY_ID)?.remove();
+  if (self && mutations !== before) placeNodes(entry.el, domNodes(entry), nextNodeAfter(entry));
+}
+
+// ---- Scheduling: changed components re-render once per microtask, parents first ----
+
+const dirty = new Set<CompEntry>();
+let flushQueued = false;
+function invalidate(entry: CompEntry) {
+  if (entry.disposed) return;
+  entry.dirty = true;
+  dirty.add(entry);
+  if (!flushQueued) { flushQueued = true; queueMicrotask(flush); }
+}
+function flush() {
+  flushQueued = false;
+  const queue = [...dirty].sort((a, b) => a.depth - b.depth);
+  dirty.clear();
+  for (const entry of queue) {
+    if (entry.disposed || !entry.dirty) continue;
+    try { countRender(); }
+    catch (error) { dirty.clear(); entry.app.onError(error); return; }
+    renderComponent(entry, entry.props, true, null);
+  }
 }
 
 const OVERLAY_ID = 'ibu-error-overlay';
@@ -165,7 +369,7 @@ function showOverlay(error: unknown) {
     Object.assign(el.style, { position: 'fixed', left: '16px', right: '16px', bottom: '16px', maxHeight: '50vh', overflow: 'auto', zIndex: '2147483647', background: '#2b0d12', color: '#ffe4e6', border: '1px solid #fb7185', borderRadius: '12px', padding: '16px', font: '13px/1.5 ui-monospace, monospace', whiteSpace: 'pre-wrap' });
     document.body.append(el);
   }
-  el.textContent = `IbuJS could not render the page, so the last working version is still shown.\n\n${error instanceof Error ? error.message : String(error)}\n\n(This box only appears during development.)`;
+  el.textContent = `IbuJS could not render part of the page, so its last working version is still shown.\n\n${error instanceof Error ? error.message : String(error)}\n\n(This box only appears during development.)`;
 }
 function reportRenderError(error: unknown) {
   console.error(error);
@@ -175,61 +379,63 @@ function reportRenderError(error: unknown) {
 let renders = 0, resetQueued = false;
 function countRender() {
   if (!resetQueued) { resetQueued = true; setTimeout(() => { renders = 0; resetQueued = false; }, 0); }
-  if (++renders > 1000) {
-    throw new IbuError('IBU203', 'The app re-rendered more than 1000 times without pausing.', 'A component probably writes to a signal it reads while rendering. Move the write into an event handler or effect().');
+  if (++renders > 10_000) {
+    throw new IbuError('IBU203', 'Components re-rendered more than 10,000 times without pausing.', 'A component probably writes to a signal it reads while rendering. Move the write into an event handler or effect().');
   }
 }
 
 export interface App { update(): void; unmount(): void; root: Element }
 export interface AppOptions { onError?: (error: unknown) => void }
 
-// Renders view into target and re-renders (batched, once per microtask) when any signal it read changes.
-// target can be an element or a CSS selector. Any existing content (e.g. server-rendered HTML) is replaced.
-export function createApp(view: (() => Child) | Component, target: Element | string | null, options: AppOptions | Subscribable[] = {}): App {
+function start(view: (() => Child) | Component, target: Element | string | null, options: AppOptions | Subscribable[], hydrating: boolean): App {
   const root = typeof target === 'string' ? document.querySelector(target) : target;
   if (!root) {
     throw new IbuError('IBU201', `The mount target ${typeof target === 'string' ? `"${target}" ` : ''}was not found.`, 'Add <div id="app"></div> to index.html and load your script with type="module" (which runs after the page is parsed).');
   }
-  const extraDeps = Array.isArray(options) ? options : [];
-  const onError = (!Array.isArray(options) && options.onError) || reportRenderError;
-  const svg = root.namespaceURI === SVG_NS;
-  let entries: Entry[] = [];
-  let deps = new Set<Subscribable>();
-  let unsubs: Array<() => void> = [];
-  let disposed = false, scheduled = false;
-  const schedule = () => { if (!scheduled && !disposed) { scheduled = true; queueMicrotask(update); } };
-  const subscribe = (next: Set<Subscribable>) => {
-    unsubs.forEach(u => u());
-    deps = next;
-    unsubs = [...next].map(d => d.subscribe(schedule));
+  const app: AppState = { onError: (!Array.isArray(options) && options.onError) || reportRenderError, failed: new Set() };
+  const container: RootEntry = { kind: 'root', node: root, children: [], svg: root.namespaceURI === SVG_NS && root.localName !== 'foreignObject', app, depth: 0 };
+  const shallow: Shallow = { kind: 'comp', fn: view as Component, props: {}, key: undefined };
+  const mountRoot = (hy: Hydrator | null) => {
+    const entry = mount(shallow, container, hy) as CompEntry;
+    container.children = [entry];
+    if (hy) finishHydration(hy, root.localName);
+    // v0.5 form: createApp(view, target, [signalA, signalB]) also re-renders on those signals.
+    if (Array.isArray(options) && options.length) { entry.extraDeps = options; subscribe(entry, new Set([...entry.deps, ...options])); }
+    placeNodes(root, domNodes(entry), null);
+    return entry;
   };
-  function update() {
-    scheduled = false;
-    if (disposed) return;
-    const observed = new Set<Subscribable>(extraDeps);
-    try {
-      countRender();
-      track(() => {
-        // Resolving first means a broken component throws before the DOM is touched.
-        const tree = resolve((view as Component)({}));
-        try { entries = reconcile(root!, entries, tree, svg); }
-        catch (err) { root!.replaceChildren(); entries = []; throw err; }
-      }, observed);
-      subscribe(observed);
-      if (DEV) document.getElementById(OVERLAY_ID)?.remove();
-    } catch (error) {
-      // Keep listening, so fixing the state that caused the error re-renders the app.
-      subscribe(new Set([...deps, ...observed]));
-      onError(error);
+  let rootEntry: CompEntry;
+  if (hydrating && root.firstChild) {
+    try { rootEntry = mountRoot({ parent: root, next: root.firstChild }); }
+    catch (error) {
+      if (!(error instanceof HydrationMismatch)) throw error;
+      if (DEV) console.warn(`[IBU206] The server-rendered HTML did not match (${error.message}), so the page was rendered again in the browser.\n  More: npx ibu explain IBU206`);
+      for (const entry of container.children) unmount(entry, false);
+      root.replaceChildren();
+      container.children = [];
+      rootEntry = mountRoot(null);
     }
+  } else {
+    root.replaceChildren();
+    rootEntry = mountRoot(null);
   }
-  root.replaceChildren();
-  update();
   return {
-    update,
-    unmount() { disposed = true; unsubs.forEach(u => u()); root.replaceChildren(); entries = []; },
+    // Re-renders everything now, including components whose props did not change.
+    update() { if (!rootEntry.disposed) renderComponent(rootEntry, rootEntry.props, true, null, true); },
+    unmount() { unmount(rootEntry, true); root.replaceChildren(); container.children = []; },
     root
   };
+}
+
+// Renders view into target, replacing any existing content. target can be an element or a CSS selector.
+export function createApp(view: (() => Child) | Component, target: Element | string | null, options: AppOptions | Subscribable[] = {}): App {
+  return start(view, target, options, false);
+}
+
+// Like createApp, but adopts HTML rendered on the server by renderToString()/renderPage() instead of
+// rebuilding it: no flash, and inputs keep focus. Falls back to a fresh render if the HTML differs.
+export function hydrate(view: (() => Child) | Component, target: Element | string | null, options: AppOptions = {}): App {
+  return start(view, target, options, true);
 }
 
 // Resolves after pending re-renders have been applied to the DOM.

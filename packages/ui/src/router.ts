@@ -86,13 +86,14 @@ export function createRouter(routes: Route[], notFound: Route['component'] = () 
     navigate,
     query: () => new URLSearchParams(search.value),
     isActive: (href: string) => path.value === href,
-    view() {
+    // Each page renders as its own component, so it updates independently of the layout around it.
+    view(): Child {
       const current = path.value;
       for (const route of routes) {
         const params = matchRoute(route.path, current);
-        if (params) return route.component(params);
+        if (params) return h(route.component, params);
       }
-      return notFound({});
+      return h(notFound, {});
     },
     dispose() { if (hasWindow) window.removeEventListener(mode === 'hash' ? 'hashchange' : 'popstate', sync); }
   };

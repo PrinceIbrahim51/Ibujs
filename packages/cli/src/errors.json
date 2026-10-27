@@ -77,6 +77,12 @@
     "fix": "Pass the signal, not its value.",
     "example": "const name = signal('');  <input bind={name} />"
   },
+  "IBU206": {
+    "title": "Server HTML did not match during hydration",
+    "why": "hydrate() adopts HTML rendered on the server, but the page in the browser rendered something different (for example data changed between server and browser, the HTML was edited by an extension, or the browser repaired invalid nesting such as a <div> inside a <p>).",
+    "fix": "Render the same data on both sides (pass it from the server instead of re-fetching), keep valid HTML nesting, and avoid values like Date.now() or Math.random() during rendering. IbuJS already recovered by rendering the page again in the browser.",
+    "example": "hydrate(App, '#app')"
+  },
   "IBU301": {
     "title": "Router refused to leave the site",
     "why": "router.navigate() only moves between pages of your own app. Accepting other origins would let a crafted ?next= parameter send users to a phishing site.",
