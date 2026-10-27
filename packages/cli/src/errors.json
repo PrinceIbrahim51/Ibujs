@@ -233,6 +233,18 @@
     "fix": "Use simple names, keep the defaults (HttpOnly, SameSite=Lax, Secure on HTTPS), and only use SameSite=None over HTTPS.",
     "example": ""
   },
+  "IBU506": {
+    "title": "Not allowed",
+    "why": "The user is logged in, but the policy for this action does not allow them to do it (for example editing someone else's note).",
+    "fix": "In the page, show a friendly message for status 403. On the server, check the policy rule: owner('owner_id') compares the record's owner column with the logged-in user's id.",
+    "example": "await notes.authorize(actorFromSession(await sessions.get(ctx)), 'update', note)"
+  },
+  "IBU507": {
+    "title": "Invalid policy rule",
+    "why": "Every rule in definePolicy() must be true, false or a function that returns true or false. Anything else would make the rule's meaning unclear.",
+    "fix": "Use the helpers: owner('owner_id'), role('admin'), loggedIn, anyOf(...), allOf(...), or your own (user, record) => boolean.",
+    "example": "definePolicy<Note>({ update: owner('owner_id'), delete: anyOf(owner('owner_id'), role('admin')) })"
+  },
   "IBU601": {
     "title": "Unsafe SQL identifier",
     "why": "Column and table names cannot be query parameters, so they must be validated separately.",

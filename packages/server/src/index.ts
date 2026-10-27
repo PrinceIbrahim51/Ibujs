@@ -7,3 +7,4 @@ export { sql, isSql, toText, createDatabase, sqliteDatabase, memoryDatabase, typ
 export { serveStatic, publicDir, type StaticOptions } from './static.js';
 export { renderPage, renderDocument, html, escapeHtml, renderToString, isSafeHtml, SafeHtml, type PageOptions } from './ssr.js';
 export { IbuError } from '@ibujs/ui';
+export { definePolicy, owner, role, loggedIn, anyOf, allOf, actorFromSession, type Actor, type Rule } from './authz.js';
