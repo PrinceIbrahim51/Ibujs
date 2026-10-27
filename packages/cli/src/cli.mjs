@@ -20,7 +20,7 @@ if (existsSync(join(root, '.env')) && typeof process.loadEnvFile === 'function')
 
 const HELP = `IbuJS CLI
 
-  ibu create <name>        Create a new app
+  ibu create <name>        Create a new app (--npm: use published packages, --vendor: copy the framework in)
   ibu dev                  Start the dev server with reload
   ibu build                Production build into dist/
   ibu start                Run the production build
@@ -70,7 +70,7 @@ async function doctor() {
 
 async function main() {
   switch (command) {
-    case 'create': return create(args[0], root);
+    case 'create': return create(args[0], root, { mode: flags.has('--npm') ? 'npm' : flags.has('--vendor') ? 'vendor' : undefined });
     case 'dev': return dev(root);
     case 'build': return build(root);
     case 'start': return start(root);

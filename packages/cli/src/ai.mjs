@@ -87,7 +87,7 @@ async function readIfExists(path) {
 
 // The framework reference (llms.txt) and project rules (AGENTS.md) the AI must follow.
 async function frameworkGuide(root) {
-  const reference = await readIfExists(join(root, 'llms.txt')) || await readIfExists(join(here, '../../../llms.txt'));
+  const reference = await readIfExists(join(root, 'llms.txt')) || await readIfExists(join(here, '../llms.txt')) || await readIfExists(join(here, '../../../llms.txt'));
   const rules = await readIfExists(join(root, 'AGENTS.md')) || await readIfExists(join(here, '../template/AGENTS.md'));
   return `<ibujs_reference>\n${reference}\n</ibujs_reference>\n\n<project_rules>\n${rules}\n</project_rules>`;
 }

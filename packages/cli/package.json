@@ -11,5 +11,9 @@
     "@anthropic-ai/sdk": "~0.133.0",
     "esbuild": "^0.28.2",
     "tsx": "^4.23.15"
+  },
+  "exports": {
+    "./create": "./src/create.mjs",
+    "./package.json": "./package.json"
   }
 }

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "declaration": true,
+    "outDir": ".release/build",
+    "rootDir": "packages",
+    "jsx": "react-jsx"
+  },
+  "include": ["packages/ui/src/**/*.ts", "packages/server/src/**/*.ts", "packages/ai/src/**/*.ts"]
+}

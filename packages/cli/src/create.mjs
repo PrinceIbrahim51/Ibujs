@@ -8,32 +8,42 @@ const cliRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // packages/cli -> the workspace that contains packages/ (the framework repo, or an app made by `ibu create`).
 const frameworkRoot = resolve(cliRoot, '../..');
 const template = join(cliRoot, 'template');
+// True when running from the IbuJS source repository (or an app that vendors it); false when
+// @ibujs/cli was installed from npm.
+const hasSource = existsSync(join(frameworkRoot, 'packages', 'ui', 'src', 'index.ts'));
 
 export const newSecret = () => randomBytes(32).toString('base64url');
 
-export async function create(name, cwd) {
+// mode: 'vendor' copies the framework into the app (works offline); 'npm' depends on the published
+// packages. Default: vendor when running from the source repository, npm otherwise.
+export async function create(name, cwd, { mode } = {}) {
   if (!name || !/^[a-z][a-z0-9-]{1,48}$/.test(name)) throw new Error('Usage: npx ibu create my-app  (lowercase letters, numbers and hyphens)');
   const dest = resolve(cwd, name);
   if (existsSync(dest)) throw new Error(`A folder named "${name}" already exists here.`);
   const version = JSON.parse(await readFile(join(cliRoot, 'package.json'), 'utf8')).version;
+  const vendor = mode === 'npm' ? false : mode === 'vendor' ? true : hasSource;
+  if (vendor && !hasSource) throw new Error('--vendor needs the IbuJS source repository. Installed from npm, new apps use the published @ibujs packages.');
   await mkdir(dest, { recursive: true });
 
-  // The framework is vendored as local workspace packages, so the app works offline and is easy to inspect.
-  for (const pkg of ['ui', 'server', 'ai', 'cli']) {
-    await cp(join(frameworkRoot, 'packages', pkg), join(dest, 'packages', pkg), { recursive: true, filter: src => !src.includes('node_modules') });
+  if (vendor) {
+    // The framework is vendored as local workspace packages, so the app works offline and is easy to inspect.
+    for (const pkg of ['ui', 'server', 'ai', 'cli']) {
+      await cp(join(frameworkRoot, 'packages', pkg), join(dest, 'packages', pkg), { recursive: true, filter: src => !src.includes('node_modules') });
+    }
   }
   for (const item of ['index.html', 'src', 'public', 'AGENTS.md', 'CLAUDE.md']) {
     if (existsSync(join(template, item))) await cp(join(template, item), join(dest, item), { recursive: true });
   }
-  // The compact API reference that AI assistants (and `ibu ai`) read.
-  await cp(join(frameworkRoot, 'llms.txt'), join(dest, 'llms.txt'));
+  // The compact API reference that AI assistants (and `ibu ai`) read; the npm package ships a copy.
+  await cp(existsSync(join(cliRoot, 'llms.txt')) ? join(cliRoot, 'llms.txt') : join(frameworkRoot, 'llms.txt'), join(dest, 'llms.txt'));
+  const range = vendor ? '*' : `^${version}`;
   const write = (file, text) => writeFile(join(dest, file), text);
   await write('package.json', JSON.stringify({
     name,
     version: '0.1.0',
     private: true,
     type: 'module',
-    workspaces: ['packages/*'],
+    ...(vendor ? { workspaces: ['packages/*'] } : {}),
     scripts: {
       dev: 'ibu dev',
       build: 'ibu build',
@@ -42,9 +52,9 @@ export async function create(name, cwd) {
       typecheck: 'tsc --noEmit',
       doctor: 'ibu doctor'
     },
-    // "*" always resolves to the vendored workspace copies in packages/.
-    dependencies: { '@ibujs/ai': '*', '@ibujs/server': '*', '@ibujs/ui': '*' },
-    devDependencies: { '@ibujs/cli': '*', '@types/node': '^22.20.5', typescript: '^5.9.3' },
+    // With vendoring, "*" always resolves to the workspace copies in packages/.
+    dependencies: { '@ibujs/ai': range, '@ibujs/server': range, '@ibujs/ui': range },
+    devDependencies: { '@ibujs/cli': range, '@types/node': '^22.20.5', typescript: '^5.9.3' },
     engines: { node: '>=22.13' }
   }, null, 2) + '\n');
   await write('ibu.config.json', JSON.stringify({ client: 'src/main.tsx', server: 'src/server.ts', html: 'index.html' }, null, 2) + '\n');
