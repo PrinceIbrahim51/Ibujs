@@ -1,5 +1,6 @@
 {
   "client": "packages/cli/template/src/main.tsx",
   "server": "packages/cli/template/src/server.ts",
-  "html": "packages/cli/template/index.html"
+  "html": "packages/cli/template/index.html",
+  "publicDir": "site"
 }

@@ -1,4 +1,4 @@
-export { createServer, HttpError, API_CSP, PAGE_CSP, type Context, type Handler, type Middleware, type RouteArgs, type ServerOptions } from './app.js';
+export { createServer, HttpError, API_CSP, PAGE_CSP, SERVERLESS_HANDLER, type Context, type Handler, type Middleware, type RouteArgs, type ServerOptions } from './app.js';
 export { s, Schema, ValidationError, validateObject, type Infer, type Issue } from './schema.js';
 export { parseCookies, serializeCookie, type CookieOptions } from './cookies.js';
 export { hashPassword, verifyPassword, needsRehash, createSessionManager, sessionCookie, type Session, type SessionOptions } from './auth.js';

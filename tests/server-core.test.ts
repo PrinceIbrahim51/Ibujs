@@ -224,3 +224,30 @@ test('logger never logs query strings', async () => {
   assert.match(lines[0], /^GET \/reset 200 \d+ms [0-9a-f-]{36}$/);
   assert.match(lines[1], /^POST \/fail 422 /, 'logs the final status of handled errors');
 });
+
+test('serverless: listen() registers the handler instead of opening a port; Vercel trusts its proxy', async () => {
+  const { SERVERLESS_HANDLER, PAGE_CSP } = await import('../packages/server/src/index.js');
+  // @ts-expect-error plain JavaScript module without type declarations
+  const { STATIC_HEADERS } = await import('../packages/cli/src/build.mjs');
+  assert.equal(STATIC_HEADERS['Content-Security-Policy'], PAGE_CSP, 'CDN and server use the same page CSP');
+  process.env.IBU_SERVERLESS = '1';
+  process.env.VERCEL = '1';
+  try {
+    const app = createServer();
+    app.get('/ip', ctx => ctx.json({ ip: ctx.ip, secure: ctx.secure }));
+    const server = app.listen(0);
+    assert.equal(server.listening, false);
+    const handler = (globalThis as Record<symbol, unknown>)[SERVERLESS_HANDLER];
+    assert.equal(handler, app.handler);
+    const real = (await import('node:http')).createServer(handler as never).listen(0);
+    await new Promise(r => real.once('listening', r));
+    const { port } = real.address() as { port: number };
+    const res = await fetch(`http://127.0.0.1:${port}/ip`, { headers: { 'X-Forwarded-For': '198.51.100.9', 'X-Forwarded-Proto': 'https' } });
+    assert.deepEqual(await res.json(), { ip: '198.51.100.9', secure: true });
+    real.close();
+  } finally {
+    delete process.env.IBU_SERVERLESS;
+    delete process.env.VERCEL;
+    delete (globalThis as Record<symbol, unknown>)[Symbol.for('ibujs.handler')];
+  }
+});

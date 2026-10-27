@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os';
+import { isAbsolute, join } from 'node:path';
 import { IbuError } from '@ibujs/ui';
 
 // SQL injection is impossible by construction: values in sql`...` are always sent to the database
@@ -73,6 +75,11 @@ export async function sqliteDatabase(filename = 'data.db'): Promise<Database> {
   let mod: typeof import('node:sqlite');
   try { mod = await import('node:sqlite'); }
   catch { throw new IbuError('IBU603', 'SQLite is not available in this Node.js version.', 'Upgrade to Node.js 22.13 or newer, or pass your own adapter to createDatabase().'); }
+  // Serverless functions can only write to the temp folder, and it is wiped between instances.
+  if (process.env.IBU_SERVERLESS === '1' && filename !== ':memory:' && !isAbsolute(filename)) {
+    filename = join(tmpdir(), filename);
+    console.warn(`[IBU604] SQLite is using ${filename}: on serverless platforms this data is temporary and not shared between instances. Use a hosted database for real data.\n  More: npx ibu explain IBU604`);
+  }
   const db = new mod.DatabaseSync(filename);
   db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
   const toSqlite = (v: unknown) => v === undefined ? null : typeof v === 'boolean' ? Number(v) : v instanceof Date ? v.toISOString() : v;

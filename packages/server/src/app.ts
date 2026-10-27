@@ -41,6 +41,7 @@ export type RouteArgs = [...middleware: Middleware[], handler: Handler];
 export interface ServerOptions {
   maxBodyBytes?: number;
   // Set when running behind a reverse proxy/load balancer: true = one hop, or the number of hops.
+  // On Vercel (VERCEL=1) this defaults to one hop, because every request arrives through its proxy.
   trustProxy?: boolean | number;
   // Adds error details to 500 responses. Defaults to NODE_ENV === 'development'.
   dev?: boolean;
@@ -71,6 +72,8 @@ const DEFAULT_HEADERS: Record<string, string> = {
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const JSON_TYPE = 'application/json; charset=utf-8';
 const PAGE_CSP_KEY = Symbol('pageCsp');
+// Where app.listen() registers the request handler when a serverless platform runs the app.
+export const SERVERLESS_HANDLER = Symbol.for('ibujs.handler');
 
 // Drops keys that could pollute prototypes if the parsed object is later merged into another.
 function safeReviver(key: string, value: unknown) {
@@ -119,7 +122,8 @@ export function createServer(options: ServerOptions = {}) {
   const allRoutes: RouteDef[] = [];
   const middleware: Middleware[] = [];
   const maxBodyBytes = options.maxBodyBytes ?? 1024 * 1024;
-  const hops = options.trustProxy === true ? 1 : Number(options.trustProxy || 0);
+  const trustProxy = options.trustProxy ?? (process.env.VERCEL === '1' ? 1 : 0);
+  const hops = trustProxy === true ? 1 : Number(trustProxy || 0);
   const dev = options.dev ?? process.env.NODE_ENV === 'development';
   const csrfEnabled = options.csrf !== false;
   const corsOrigins = new Set(options.cors?.origins ?? []);
@@ -133,7 +137,9 @@ export function createServer(options: ServerOptions = {}) {
   }
   const pageCsp = options.pageCsp ?? PAGE_CSP;
   const onError = options.onError ?? ((error: unknown, ctx: Context) => {
-    console.error(`[IbuJS] ${ctx.req.method} ${ctx.url.pathname} failed (request ${ctx.requestId}):`, error);
+    // Deliberate HttpErrors get one line; unexpected errors get the full stack trace.
+    const detail = error instanceof HttpError ? `${error.status} ${error.message}` : error;
+    console.error(`[IbuJS] ${ctx.req.method} ${ctx.url.pathname} failed (request ${ctx.requestId}):`, detail);
   });
 
   const route = (method: string, path: string, fns: Array<Middleware | Handler>) => {
@@ -299,6 +305,11 @@ export function createServer(options: ServerOptions = {}) {
       server.requestTimeout = 60_000;
       server.keepAliveTimeout = 5_000;
       server.maxHeadersCount = 100;
+      // On serverless platforms (ibu build --target=vercel) the platform calls the handler itself.
+      if (process.env.IBU_SERVERLESS === '1') {
+        (globalThis as Record<symbol, unknown>)[SERVERLESS_HANDLER] = handler;
+        return server;
+      }
       return server.listen(port, host);
     },
     handler

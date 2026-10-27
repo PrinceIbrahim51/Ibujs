@@ -40,7 +40,7 @@ const ai = process.env.ANTHROPIC_API_KEY
   ? createAI({ system: 'You are a friendly assistant inside a small notes app. Answer briefly and clearly.' })
   : null;
 app.post('/api/ask', ai ? ai.route() : () => {
-  throw new HttpError(503, 'AI is not set up yet: add ANTHROPIC_API_KEY to .env and restart the server.');
+  throw new HttpError(503, 'AI is not set up yet: add ANTHROPIC_API_KEY to .env (or your host\'s environment variables) and restart.');
 });
 
 app.get('/api/health', ctx => ctx.json({ ok: true }));
@@ -50,5 +50,5 @@ app.use(serveStatic(publicDir(), { spa: true }));
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? '127.0.0.1';
-app.listen(port, host);
-console.log(`IbuJS app ready at http://${host}:${port}`);
+// On serverless hosts (Vercel) no port is opened, so this message only shows when it is true.
+app.listen(port, host).on('listening', () => console.log(`IbuJS app ready at http://${host}:${port}`));

@@ -263,6 +263,12 @@
     "fix": "Upgrade Node.js, or use memoryDatabase() while prototyping, or another database through createDatabase(adapter).",
     "example": ""
   },
+  "IBU604": {
+    "title": "SQLite data is temporary on serverless platforms",
+    "why": "On Vercel and similar platforms each function instance has its own temporary disk, which is wiped when the instance stops. Data written there disappears and is not shared between visitors served by different instances.",
+    "fix": "Fine for demos. For real data, connect a hosted database (for example Postgres or Turso) through createDatabase(adapter), or deploy to a server with a persistent disk (any Node.js host with `npm start`).",
+    "example": ""
+  },
   "IBU701": {
     "title": "Hard-coded secret",
     "why": "API keys, passwords and private keys in source code end up in git history, screenshots and AI prompts. Leaked keys are found by bots within minutes.",
@@ -394,5 +400,11 @@
     "why": "The AI proposed writing outside your project, into protected files (.env, node_modules, packages), or code that fails the security check.",
     "fix": "Rephrase the request, or apply the change by hand after reviewing it.",
     "example": ""
+  },
+  "IBU904": {
+    "title": "No app found for the serverless function",
+    "why": "The Vercel function loads your server file and expects it to call app.listen(). On serverless platforms listen() registers the app instead of opening a port.",
+    "fix": "Make sure src/server.ts creates the app and calls app.listen(...) at the top level (not inside an if or a callback).",
+    "example": "app.listen(Number(process.env.PORT ?? 3000))"
   }
 }

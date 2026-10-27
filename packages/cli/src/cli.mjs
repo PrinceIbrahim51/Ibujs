@@ -22,7 +22,7 @@ const HELP = `IbuJS CLI
 
   ibu create <name>        Create a new app (--npm: use published packages, --vendor: copy the framework in)
   ibu dev                  Start the dev server with reload
-  ibu build                Production build into dist/
+  ibu build                Production build into dist/ (--target=vercel: also .vercel/output for Vercel)
   ibu start                Run the production build
   ibu check [paths]        Offline security check (--json for machine output)
   ibu ai "<what to do>"    Ask Claude to change your code, then typecheck + security-check it and let
@@ -72,7 +72,7 @@ async function main() {
   switch (command) {
     case 'create': return create(args[0], root, { mode: flags.has('--npm') ? 'npm' : flags.has('--vendor') ? 'vendor' : undefined });
     case 'dev': return dev(root);
-    case 'build': return build(root);
+    case 'build': return build(root, { target: option('target') });
     case 'start': return start(root);
     case 'secret': console.log(newSecret()); return;
     case 'doctor': return doctor();
