@@ -90,7 +90,7 @@ function Playground() {
       <h2>Security playground</h2>
       <p class="muted">Real exploits from the v0.5 audit, run through this page's actual IbuJS engine.</p>
       <div class="table" role="table" aria-label="Attack results">
-        <div class="tr th" role="row"><span role="columnheader">Attack</span><span role="columnheader">v0.5</span><span role="columnheader">v0.6</span></div>
+        <div class="tr th" role="row"><span role="columnheader">Attack</span><span role="columnheader">v0.5</span><span role="columnheader">v0.7</span></div>
         {results.map(r => (
           <div class="tr" role="row" key={r.name}>
             <span role="cell">{r.name}<small>{r.detail}</small></span>
@@ -148,7 +148,7 @@ const { Link } = router;
 function App() {
   return (
     <main class="shell">
-      <span class="pill">IBUJS v0.6 • LIVE DEMO</span>
+      <span class="pill">IBUJS v0.7 • LIVE DEMO</span>
       <h1>Build your own web.</h1>
       <p>Full-stack TypeScript + JSX, secure by default, made for beginners and AI. This page runs the real IbuJS engine.</p>
       <nav>

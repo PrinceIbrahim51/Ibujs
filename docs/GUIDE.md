@@ -93,7 +93,32 @@ app.get('/api/me', async ctx => {
 });
 ```
 
-On protected data, always filter by the logged-in user: `WHERE owner_id = ${session.sub}`. Sessions identify *who* someone is; you decide *what* they may touch.
+### Who may touch which record
+
+Sessions say *who* someone is. A policy says *what* they may do. Anything you don't list is denied, so forgetting a rule fails safe.
+
+```ts
+import { definePolicy, owner, role, anyOf, actorFromSession } from '@ibujs/server';
+
+type Todo = { id: number; owner_id: number; title: string };
+const todos = definePolicy<Todo>({
+  read: owner('owner_id'),                          // only the person who created it
+  update: owner('owner_id'),
+  delete: anyOf(owner('owner_id'), role('admin'))   // or an admin: sessions.login(ctx, id, { roles: 'admin' })
+});
+const TodoId = s.number({ coerce: true, integer: true, min: 1 });
+
+app.delete('/api/todos/:id', async ctx => {
+  const user = actorFromSession(await sessions.require(ctx));
+  const [todo] = await db.sql<Todo>`SELECT * FROM todos WHERE id = ${TodoId.parse(ctx.params.id)}`;
+  if (!todo) throw new HttpError(404, 'Todo not found');
+  await todos.authorize(user, 'delete', todo);      // 403 "You are not allowed to delete this" otherwise
+  await db.sql`DELETE FROM todos WHERE id = ${todo.id}`;
+  ctx.empty();
+});
+```
+
+Lists: filter in SQL (`WHERE owner_id = ${Number(user.id)}`) or with `await todos.filter(user, 'read', rows)`. Pass `{ hide: true }` to `authorize` to answer 404 instead of 403, so other people can't even tell the record exists.
 
 ## 6. Ask the AI to do it for you
 
@@ -101,7 +126,7 @@ On protected data, always filter by the logged-in user: `WHERE owner_id = ${sess
 npx ibu ai "add a todo list page with add, complete and delete, saved in the database"
 ```
 
-You'll see the planned changes and approve them. See [AI.md](AI.md).
+You'll see the planned changes and approve them. After writing, IbuJS typechecks and security-checks the result; if something fails, Claude gets the errors and fixes them (twice at most by default). Add `--branch` to keep the change on its own git branch. See [AI.md](AI.md).
 
 ## 7. Check, build and deploy
 
@@ -116,6 +141,15 @@ Deploy `dist/` with `node dist/server.mjs` on any Node 22+ host:
 1. Set the environment variables from `.env` in your host's dashboard.
 2. Behind a proxy or load balancer, use `createServer({ trustProxy: true })` so rate limits and secure cookies work.
 3. Set `HOST=0.0.0.0` only inside containers.
+
+### Deploy to Vercel
+
+New apps already contain a `vercel.json`, so:
+
+1. Push the app to GitHub and import it at vercel.com/new (or run `npx vercel` in the folder).
+2. Under **Settings → Environment Variables**, add `SESSION_SECRET` (from `npx ibu secret`) and, for AI features, `ANTHROPIC_API_KEY`. Redeploy.
+
+`npm run build:vercel` (`ibu build --target=vercel`) puts your static files on Vercel's CDN and runs `src/server.ts` as one serverless function, with the same security headers. Two things work differently there: the server's files are read-only and temporary, so the SQLite file lives in `/tmp` and is reset when the function restarts (IBU604; use a hosted database such as Turso or Postgres for real data), and in-memory rate limits apply per function instance.
 
 ## When something breaks
 

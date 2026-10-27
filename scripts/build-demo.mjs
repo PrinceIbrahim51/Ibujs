@@ -19,7 +19,7 @@ const result = await build({
 const css = await readFile(new URL('demo/src/demo.css', root), 'utf8');
 // "</script" inside the bundle would end the inline script early.
 const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
-const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="IbuJS live demo: signals, routing and the security playground, running the real engine"><title>IbuJS v0.6 demo</title><style>${css}</style></head><body><div id="app"></div><script>${js}</script></body></html>\n`;
+const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="IbuJS live demo: signals, routing and the security playground, running the real engine"><title>IbuJS v0.7 demo</title><style>${css}</style></head><body><div id="app"></div><script>${js}</script></body></html>\n`;
 await writeFile(new URL('demo/index.html', root), html);
 console.log(`✔ demo/index.html (${(html.length / 1024).toFixed(1)} KB)`);
 

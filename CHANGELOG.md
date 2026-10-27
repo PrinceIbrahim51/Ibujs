@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.7.0 (2026-10-27)
+
+### Added
+- **Rendering engine v2 (UI):** every component has its own update scope and re-renders only when the signals it reads change (parents first, batched per microtask). Children with shallow-equal props are skipped. A component that throws keeps its last output while the rest of the page keeps working. `hydrate(App, target)` adopts HTML from `renderToString`/`renderPage` and falls back to a fresh render on mismatch (`IBU206`). Updating one row in a 1,000-row list is about 28× faster (`npm run bench`).
+- **Authorization (server):** `definePolicy`, `owner`, `role`, `loggedIn`, `anyOf`, `allOf`, `actorFromSession`. Deny by default, async rules, `can` / `authorize` (401, 403 `IBU506`, or 404 with `{ hide: true }`) / `filter`.
+- **`ibu ai` agent loop:** after applying a change it runs `tsc --noEmit` and `ibu check` (and `npm test` with `--test`), sends failures back to Claude in the same conversation and applies the fixes, up to `--fix-rounds=N` (default 2). `--branch[=name]` works on a new git branch and commits only the generated files. `--no-verify` turns the checks off.
+- **Deploy to Vercel:** `ibu build --target=vercel` writes `.vercel/output` (Build Output API v3: static files on the CDN with the same security headers, the server as one streaming Node function). New apps get a `vercel.json`, a `build:vercel` script and a `.vercelignore` that keeps `.env` and database files out of `vercel deploy` uploads. The framework's own starter runs at https://ibujs.vercel.app.
+- **npm packaging:** `npm run release` builds compiled `.js` + `.d.ts` packages into `.release/` (`--verify` installs the tarballs into a fresh app and runs it); `.github/workflows/release.yml` publishes on `v*` tags with trusted publishing and provenance; new `create-ibujs` package (`npx create-ibujs my-app`); `ibu create --npm` / `--vendor`.
+- **Security assurance:** seeded property-based fuzz tests (`tests/fuzz.test.ts`), a Node-vs-Chromium URL differential test, `docs/THREAT-MODEL.md`, `docs/SECURITY-REVIEW-SCOPE.md`, CodeQL and Dependabot.
+- Error codes `IBU206`, `IBU506`, `IBU507`, `IBU604`, `IBU904`.
+
+### Changed
+- The UI runtime is 6.3 KB gzipped (was 5.1 KB).
+- `trustProxy` defaults to one hop when running on Vercel (`VERCEL=1`).
+- `app.listen()` does not open a port when `IBU_SERVERLESS=1` (set by the Vercel entry); it registers the handler instead.
+- On serverless hosts a relative SQLite filename is placed in the temp folder, with warning `IBU604`.
+- The default error log prints expected `HttpError`s on one line.
+
+### Upgrading from 0.6
+- Components now re-render on their own. If you changed an object or array **in place** and relied on the parent re-rendering, the child may now be skipped: assign a new value instead (`list.update(l => [...l, x])`), which IbuJS already required.
+- `router.view()` renders the route component as a component (its own update scope) instead of calling it directly. Route components receive the same params.
+- Tests that count renders may see fewer renders.
+
 ## 0.6.0 (2026-10-27)
 
 A security-focused rebuild after a full audit of 0.5 (see `docs/SECURITY-AUDIT.md`).

@@ -63,3 +63,25 @@ test('AI output may only write ordinary source files inside the project', () => 
     assert.notEqual(checkTarget(root, bad), null, bad);
   }
 });
+
+test('ibu create: a random secret that stays out of git and Vercel uploads', async () => {
+  // @ts-expect-error plain JavaScript module without type declarations
+  const { create } = await import('../packages/cli/src/create.mjs');
+  const { mkdtemp, stat, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = await mkdtemp(join(tmpdir(), 'ibu-create-'));
+  const log = console.log;
+  console.log = () => {};
+  try { await create('app', dir, { mode: 'npm' }); } finally { console.log = log; }
+  const app = join(dir, 'app');
+  const read = (file: string) => readFile(join(app, file), 'utf8');
+  assert.match(await read('.env'), /SESSION_SECRET=\S{32,}/);
+  if (process.platform !== 'win32') assert.equal((await stat(join(app, '.env'))).mode & 0o777, 0o600);
+  for (const ignore of ['.gitignore', '.vercelignore']) assert.match(await read(ignore), /^\.env$/m, ignore);
+  assert.deepEqual(JSON.parse(await read('vercel.json')), { framework: null, buildCommand: 'npm run build:vercel' });
+  const pkg = JSON.parse(await read('package.json'));
+  assert.equal(pkg.scripts['build:vercel'], 'ibu build --target=vercel');
+  assert.match(pkg.dependencies['@ibujs/ui'], /^\^\d+\.\d+\.\d+$/);
+  await rm(dir, { recursive: true, force: true });
+});

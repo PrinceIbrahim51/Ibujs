@@ -7,7 +7,7 @@ Project layout: `src/main.tsx` (browser), `src/server.ts` (server), `index.html`
 ## Browser: @ibujs/ui
 
 ```tsx
-import { createApp, signal, computed, effect, batch, resource, createRouter, api, ApiError, nextTick } from '@ibujs/ui';
+import { createApp, hydrate, signal, computed, effect, batch, resource, createRouter, api, ApiError, nextTick } from '@ibujs/ui';
 
 const count = signal(0);                 // read/write with count.value; count.update(n => n + 1)
 const doubled = computed(() => count.value * 2);   // read-only, recomputed when count changes
@@ -20,6 +20,10 @@ function Counter() {
 }
 createApp(Counter, '#app');              // re-renders automatically (batched per microtask)
 ```
+
+How updates work: each component tracks the signals it reads and re-renders on its own when they change (parents first, batched per microtask); the rest of the page is untouched. A component whose props are shallow-equal to last time is skipped, so pass new objects/arrays when data changes. If a component throws while rendering, only that component keeps its last output and the error goes to `createApp(view, target, { onError })` (dev shows an overlay); siblings keep working.
+
+Hydration: when the server already sent the HTML (`renderToString` / `renderPage`), use `hydrate(App, '#app')` instead of `createApp`. It adopts the existing DOM (no flash, focus kept) and attaches events. If the HTML does not match what App renders, it warns with IBU206 and renders fresh.
 
 JSX rules:
 - Components are functions of props returning JSX, strings, numbers, arrays, null or booleans.
@@ -120,7 +124,26 @@ const session = await sessions.require(ctx);            // 401 if not logged in;
 sessions.logout(ctx);
 ```
 
-Pages from the server: `ctx.html(renderPage({ title, body: <App />, scripts: ['/app.js'], styles: ['/app.css'] }))`.
+Authorization (who may touch which record; everything not listed is denied):
+```ts
+import { definePolicy, owner, role, loggedIn, anyOf, allOf, actorFromSession } from '@ibujs/server';
+const notes = definePolicy<Note>({
+  read: anyOf(owner('owner_id'), (user, note) => note.is_public === 1),
+  update: owner('owner_id'),
+  delete: anyOf(owner('owner_id'), role('admin'))
+});
+app.put('/api/notes/:id', async ctx => {
+  const user = actorFromSession(await sessions.require(ctx));      // { id, roles } (roles from sessions.login(ctx, id, { roles: 'admin' }))
+  const [note] = await db.sql<Note>`SELECT * FROM notes WHERE id = ${id}`;
+  if (!note) throw new HttpError(404, 'Note not found');
+  await notes.authorize(user, 'update', note);                     // 401 not logged in, 403 not allowed; { hide: true } → 404
+  ...
+});
+const visible = await notes.filter(user, 'read', rows);              // await notes.can(user, 'read', note) → boolean
+```
+Rules are `true`, `false`, `loggedIn` or `(actor, record) => boolean | Promise<boolean>`; `allOf(...)` needs every rule; `owner(field)` compares `String(record[field])` with the actor id. Load the record first, then authorize; never trust an owner id sent by the browser.
+
+Pages from the server: `ctx.html(renderPage({ title, body: <App />, scripts: ['/app.js'], styles: ['/app.css'] }))`, then `hydrate(App, '#app')` in the browser.
 
 ## AI: @ibujs/ai (server only)
 
@@ -132,6 +155,16 @@ const text = await ai.ask('Summarise: ' + note.text); // whole answer
 for await (const chunk of ai.stream(prompt)) { ... }
 ```
 Options: `model`, `system`, `effort` ('low'…'max'), `maxTokens`; route options add `maxInputChars` (4000), `requestsPerMinute` (10), `maxConcurrent` (4). Never import @ibujs/ai in browser code (the build fails if you do).
+
+## AI coding: `npx ibu ai "<task>"`
+
+Claude edits the code, then the CLI typechecks and security-checks the result and sends any failures back to Claude in the same conversation (up to `--fix-rounds=N`, default 2, max 5). Flags: `--dry-run` (show the plan only), `--yes` (no prompts), `--branch[=name]` (new git branch, commits only the files it wrote), `--test` (also run `npm test`), `--no-verify`, `--effort=low|medium|high|xhigh|max`. Files outside the project, secrets and generated folders are never written.
+
+## Deploy
+
+- Any Node 22.13+ host: `npm run build && npm start` (set `PORT`, `HOST=0.0.0.0`, `NODE_ENV=production`).
+- Vercel: `ibu build --target=vercel` writes `.vercel/output` (static files on the CDN, `src/server.ts` as one function). New apps include a vercel.json for this (`npm run build:vercel`), so importing the repo on Vercel just works. Set secrets (ANTHROPIC_API_KEY, SESSION_SECRET) in the project's Environment Variables. SQLite files there are temporary (IBU604); use a hosted database for data that must last.
+- New apps: `npx create-ibujs my-app` (or `npx ibu create my-app --npm`); `--vendor` copies the framework source into the app.
 
 ## Optional
 

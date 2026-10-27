@@ -1,6 +1,6 @@
 {
   "name": "@ibujs/server",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "IbuJS server: secure-by-default HTTP, validation, sessions, SQL and static files",
   "license": "MIT",
   "type": "module",

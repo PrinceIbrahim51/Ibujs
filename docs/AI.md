@@ -16,6 +16,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 npx ibu ai "add a page that lists my notes with a delete button"
 npx ibu ai "add login with email and password" --dry-run      # show the code, write nothing
 npx ibu ai "make the notes searchable" --yes --effort=xhigh    # apply without asking; think harder
+npx ibu ai "add tags to notes" --branch --test                  # own git branch; also run npm test
 ```
 
 How it works:
@@ -27,6 +28,9 @@ How it works:
    - Each file runs through the same security lint as `ibu check`; any error blocks the whole change.
    - If any part of the plan is rejected, nothing is written.
 4. Shows new/modified files with line counts and asks before writing (or `--yes`; in CI without a terminal it never writes without `--yes`).
+5. **Checks that the result works:** runs the TypeScript compiler (`tsc --noEmit`) and `ibu check` on the whole project, plus `npm test` with `--test`.
+6. **Fixes its own mistakes:** if a check fails, it shows you the errors, asks whether to continue (skipped with `--yes`), and sends the errors and the current files back to Claude in the same conversation. Claude returns only the files that need fixing, which go through the same checks and approval as steps 3–4. This repeats up to `--fix-rounds=N` times (default 2, maximum 5; `--no-verify` skips steps 5–6).
+7. With `--branch` (or `--branch=my-name`) it first creates a new git branch (`ibu-ai/<task>-<id>`) and at the end commits **only the files it wrote**, so `git diff HEAD~1` shows exactly what the AI did, and `git switch -` takes you back to your original branch, untouched.
 
 Afterwards, review with `git diff`, then `npm run dev`. Because AI coding tools also read files from your repo, a malicious file in a cloned project could steer the AI ("prompt injection"). The checks above limit the damage, but *you* approve what runs.
 

@@ -1,4 +1,4 @@
-# IbuJS security audit (v0.5 → v0.6)
+# IbuJS security audit (v0.5 → v0.6, with a 0.7 addendum)
 
 **Scope:** the complete v0.5 upload (`@ibujs/ui`, `@ibujs/server`, `@ibujs/cli`, starter app, standalone demo, tests, CI) and every v0.6 change.
 **Date:** 2026-10-27. **Method:** manual code review, then each suspected issue reproduced against the *unmodified* v0.5 code (Chromium via Playwright for browser issues, real HTTP requests for server issues), fixed, and locked in with a regression test.
@@ -79,13 +79,38 @@ Plus 9 functional defects in v0.5, including two that stopped it from installing
 
 No software can be guaranteed flaw-free, and this audit was done by the same assistant that wrote the fixes. Before production use, get an independent review. Known limits:
 
-1. **Not independently audited**, and no fuzzing or formal verification yet.
+1. **Not independently audited** (the scope is ready in `docs/SECURITY-REVIEW-SCOPE.md`), and no formal verification. Fuzzing was added in 0.7 (section 6).
 2. **`ibu check` is pattern-based**: it catches common mistakes, not all vulnerabilities (e.g. missing ownership checks, business-logic flaws).
 3. **AI-generated code** is linted and path-restricted, but malicious or subtly wrong *logic* (for example sending data to an external URL) can still pass. Always review `git diff` before running it, especially in repositories you cloned from others (prompt injection via file contents).
-4. **Authorization is your job**: IbuJS gives sessions, not permissions. Check that the logged-in user owns each record.
+4. **Authorization must be called**: 0.7 adds `definePolicy` (deny by default), but nothing forces a route to call `authorize()`. A route that loads a record and returns it without a check is still an IDOR, and `ibu check` cannot detect that.
 5. **CSRF protection covers POST/PUT/PATCH/DELETE only**; never change state in GET handlers.
-6. **Rate limiting is in-memory and per process**; use a shared store with several instances. Behind a proxy set `trustProxy`, or users share one bucket and session cookies cannot detect HTTPS.
+6. **Rate limiting is in-memory and per process** (on Vercel, per function instance); use a shared store with several instances. Behind a proxy set `trustProxy`, or users share one bucket and session cookies cannot detect HTTPS.
 7. **Sessions are stateless**: revocation requires the `isRevoked` hook backed by your database.
 8. **Links to `https://` URLs from users are allowed** (they are not XSS but can be phishing); CSS values and `<style>` content are not sanitized, so never put user input in `<style>`.
 9. **`node:sqlite` is marked experimental in Node 22** (it prints a warning) and needs 22.13+.
 10. GitHub Actions are pinned to major tags, not commit SHAs.
+11. **On Vercel, SQLite is temporary**: the database file lives in the function's `/tmp` and disappears when the instance is recycled (IBU604 warns about this). Use a hosted database for data that must persist.
+
+## 6. Addendum for 0.7 (2026-10-27)
+
+0.7 added a new renderer with hydration, authorization policies, an agent loop in `ibu ai`, an npm release pipeline and a Vercel adapter. Each was reviewed against the threat model (`docs/THREAT-MODEL.md`) as it was written.
+
+**New testing**
+
+| Test | What it checks | Result |
+|---|---|---|
+| `tests/fuzz.test.ts` (seeded, `FUZZ_RUNS`, 3,000 per property in CI) | URL sanitizer never allows a dangerous scheme; `renderToString` text and attributes never break out; cookie parser never throws or touches prototypes; random and mutated session tokens are rejected; hostile JSON validates or fails cleanly; `sql` placeholders always match values; hostile request lines never crash the server or escape the static folder | All pass, also at 50,000 inputs per property |
+| `tests/e2e/url-differential.e2e.mjs` | Node's URL parser (used by SSR) against Chromium's, on 20,000 generated URLs (100,000 also run), plus every allowed URL rendered through the real DOM renderer | Pass |
+| `tests/render.test.tsx` | Per-component updates, memoization, error isolation, unsubscribe on unmount, DOM order, hydration and mismatch fallback | Pass |
+| `tests/authz.test.ts` | Deny by default, unknown actions and `__proto__` denied, numeric/string ids, `hide`; an end-to-end IDOR scenario (read, edit and delete another user's note over HTTP) | Pass: every cross-user request is refused |
+
+**Finding from the differential test (no vulnerability).** Node and Chromium parse about 0.2% of unusual URLs differently (41 of 20,000 and 228 of 100,000 generated URLs), for example `"// %2e"` or strings mixing control characters, tabs and backslashes. Every disagreement was harmless: server rendering blocks the URL, or both parsers see a safe scheme. Node never approved a URL that Chromium parses as `javascript:`, `vbscript:` or `data:`. The test now fails only on the dangerous direction, so a future change in either parser is caught.
+
+**Design notes for reviewers**
+
+- **Hydration** adopts DOM produced by `renderToString`. Tags, text and structure are compared, and any mismatch falls back to a fresh client render (IBU206). Attributes are re-applied through the same policy as normal rendering, but attributes present only in the server HTML are not removed. That only matters if an attacker can already write HTML into the page, which is XSS on its own.
+- **Authorization**: `authorize` with `{ hide: true }` answers 404 to everyone (including logged-out visitors), so a probe cannot tell "exists but not yours" from "does not exist". Without `hide` it returns 401/403 for usability.
+- **`ibu ai` agent loop**: fix rounds go through the same path restrictions, security lint and approval as the first change, and with `--branch` only files the AI wrote are staged (`git add -- <files>`), never `git add -A`. Compiler and test output sent back to Claude can contain text from your project, so the prompt-injection note in residual risk 3 applies to every round.
+- **Vercel adapter**: static files keep the full header set and CSP via `config.json` routes (a test keeps them identical to `PAGE_CSP`). `trustProxy` defaults to one hop only when `VERCEL=1`, which Vercel sets and clients cannot.
+- **Release pipeline**: publishing runs only from `v*` tags in a protected `npm` environment, with OIDC trusted publishing and `--provenance`, after `npm run check` and an install-and-run test of the packed tarballs.
+

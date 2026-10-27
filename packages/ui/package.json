@@ -1,6 +1,6 @@
 {
   "name": "@ibujs/ui",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "IbuJS UI: signals, JSX and a secure-by-default DOM renderer",
   "license": "MIT",
   "type": "module",

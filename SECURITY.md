@@ -8,7 +8,8 @@ Please do not open a public issue. Use GitHub's private vulnerability reporting 
 
 | Version | Supported |
 |---|---|
-| 0.6.x | ✅ |
+| 0.7.x | ✅ |
+| 0.6.x | ❌ (upgrade to 0.7; no breaking security changes) |
 | ≤ 0.5 | ❌ (known critical issues, see `docs/SECURITY-AUDIT.md`) |
 
 ## Security model
@@ -27,6 +28,7 @@ IbuJS aims to make the safe way the only easy way. Defaults you get without conf
 | Path traversal | `serveStatic()` blocks `..`, dotfiles, NUL, backslashes, symlink escapes | — |
 | Abuse / DoS | 1 MB JSON bodies, slow-client timeouts, `rateLimit()` with IPv6 /64 grouping and memory cap | options |
 | Prototype pollution | `__proto__` / `constructor.prototype` stripped from JSON bodies; cookie map has no prototype | — |
+| Broken access control (IDOR) | `definePolicy` denies everything not listed; `authorize()` answers 401/403, or 404 with `{ hide: true }` | — (you must call `authorize` in each route) |
 | AI cost and key abuse | Keys server-only; `ai.route()` rate, size, concurrency limits, cancels on disconnect | options |
 
-Things IbuJS cannot do for you: authorization (check ownership on every record), safe business logic, secure hosting configuration, and reviewing AI-generated code before running it. Read the residual-risk list in `docs/SECURITY-AUDIT.md`.
+Things IbuJS cannot do for you: deciding your authorization rules and calling `authorize()` on every route that touches a record, safe business logic, secure hosting configuration, and reviewing AI-generated code before running it. Read the residual-risk list in `docs/SECURITY-AUDIT.md`.

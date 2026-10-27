@@ -47,6 +47,7 @@ export async function create(name, cwd, { mode } = {}) {
     scripts: {
       dev: 'ibu dev',
       build: 'ibu build',
+      'build:vercel': 'ibu build --target=vercel',
       start: 'ibu start',
       check: 'ibu check',
       typecheck: 'tsc --noEmit',
@@ -66,10 +67,14 @@ export async function create(name, cwd, { mode } = {}) {
     },
     include: ['src']
   }, null, 2) + '\n');
-  await write('.gitignore', 'node_modules/\ndist/\n.env\n.env.*\n!.env.example\n*.db\n*.db-*\n*.log\n.DS_Store\n');
+  // Ready for `vercel deploy` or a Git import: static files go to the CDN, src/server.ts becomes one function.
+  await write('vercel.json', JSON.stringify({ framework: null, buildCommand: 'npm run build:vercel' }, null, 2) + '\n');
+  // `vercel deploy` uploads .env unless told not to (it only skips .env.local); secrets belong in the project settings.
+  await write('.vercelignore', '.env\n.env.*\n!.env.example\n*.db\n*.db-*\n');
+  await write('.gitignore', 'node_modules/\ndist/\n.vercel/\n.env\n.env.*\n!.env.example\n*.db\n*.db-*\n*.log\n.DS_Store\n');
   await write('.env.example', 'PORT=3000\nHOST=127.0.0.1\n# Generate with: npx ibu secret\nSESSION_SECRET=\n# Optional, for AI features and `npx ibu ai`: https://platform.claude.com\nANTHROPIC_API_KEY=\n');
   // A real, random secret from the start; .env is git-ignored above and readable only by you.
   await writeFile(join(dest, '.env'), `PORT=3000\nHOST=127.0.0.1\nSESSION_SECRET=${newSecret()}\nANTHROPIC_API_KEY=\n`, { mode: 0o600 });
-  await write('README.md', `# ${name}\n\nBuilt with IbuJS ${version}.\n\n\`\`\`bash\nnpm install\nnpm run dev        # http://127.0.0.1:3000\n\`\`\`\n\n| Command | What it does |\n|---|---|\n| \`npm run dev\` | Start the app and reload on changes |\n| \`npm run build\` / \`npm start\` | Production build / run it |\n| \`npm run check\` | Security check of your code |\n| \`npx ibu ai "add a contact form"\` | Ask Claude to make a change (needs ANTHROPIC_API_KEY) |\n| \`npx ibu review\` | AI security review of your code |\n| \`npx ibu explain IBU412\` | Explain an error code |\n| \`npx ibu doctor\` | Diagnose setup problems |\n\nSecrets live in \`.env\` (never commit it). Coding with an AI assistant? It will read AGENTS.md.\n`);
+  await write('README.md', `# ${name}\n\nBuilt with IbuJS ${version}.\n\n\`\`\`bash\nnpm install\nnpm run dev        # http://127.0.0.1:3000\n\`\`\`\n\n| Command | What it does |\n|---|---|\n| \`npm run dev\` | Start the app and reload on changes |\n| \`npm run build\` / \`npm start\` | Production build / run it |\n| \`npm run check\` | Security check of your code |\n| \`npx ibu ai "add a contact form"\` | Ask Claude to make a change (needs ANTHROPIC_API_KEY) |\n| \`npx ibu review\` | AI security review of your code |\n| \`npx ibu explain IBU412\` | Explain an error code |\n| \`npx ibu doctor\` | Diagnose setup problems |\n\nDeploy: any Node 22.13+ host runs \`npm run build && npm start\`. On Vercel, import the repo (vercel.json is set up) and add SESSION_SECRET and ANTHROPIC_API_KEY under Environment Variables.\n\nSecrets live in \`.env\` (never commit it). Coding with an AI assistant? It will read AGENTS.md.\n`);
   console.log(`\n✔ Created ${name}\n\n  cd ${name}\n  npm install\n  npm run dev\n\nA random SESSION_SECRET was written to ${name}/.env (git-ignored).`);
 }
