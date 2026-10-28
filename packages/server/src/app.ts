@@ -1,6 +1,6 @@
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { IbuError, isSafeHtml, matchRoute, type SafeHtml } from '@ibujs/ui';
+import { IbuError, isSafeHtml, matchRoute, type SafeHtml } from '@ibumomujs/ui';
 import { parseCookies, serializeCookie, type CookieOptions } from './cookies.js';
 import type { Schema } from './schema.js';
 

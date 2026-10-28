@@ -278,7 +278,7 @@
   "IBU702": {
     "title": "Server secret used in browser code",
     "why": "Everything in the browser bundle is public. Environment variables or AI SDKs used there would expose your keys to every visitor.",
-    "fix": "Keep secrets and @ibujs/ai in src/server.ts and call your own API route from the page.",
+    "fix": "Keep secrets and @ibumomujs/ai in src/server.ts and call your own API route from the page.",
     "example": "for await (const chunk of api.stream('/api/ask', { prompt })) answer.value += chunk"
   },
   "IBU703": {
@@ -366,7 +366,7 @@
     "example": ""
   },
   "IBU801": {
-    "title": "@ibujs/ai loaded in the browser",
+    "title": "@ibumomujs/ai loaded in the browser",
     "why": "The AI helper needs your API key, which must never reach the browser.",
     "fix": "Use it only in server code and stream answers to the page through your own route.",
     "example": "app.post('/api/ask', ai.route({ system: 'You are a helpful cooking assistant.' }))"

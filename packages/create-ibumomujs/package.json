@@ -1,0 +1,13 @@
+{
+  "name": "create-ibumomujs",
+  "version": "0.7.0",
+  "description": "Create a new IbuJS app: npm create ibumomujs@latest my-app",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-ibumomujs": "./index.mjs"
+  },
+  "dependencies": {
+    "@ibumomujs/cli": "*"
+  }
+}

@@ -1,4 +1,4 @@
-import { IbuError } from '@ibujs/ui';
+import { IbuError } from '@ibumomujs/ui';
 import { HttpError } from './app.js';
 import type { Session } from './auth.js';
 

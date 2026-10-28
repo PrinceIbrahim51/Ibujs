@@ -41,7 +41,7 @@ The starter app has no accounts; `tests/guide.test.ts` and `tests/authz.test.ts`
 3. Can a session token be forged, replayed after revocation, or fixated?
 4. Can `serveStatic` be made to serve anything outside its folder on Linux, macOS or Windows?
 5. Can `ibu ai` be steered, through repository content, into writing outside the allowed paths or executing code without `--test`?
-6. Are the documented defaults (`docs/THREAT-MODEL.md`) actually in effect in a fresh `npm create ibujs` app and in the Vercel deployment?
+6. Are the documented defaults (`docs/THREAT-MODEL.md`) actually in effect in a fresh `npm create ibumomujs` app and in the Vercel deployment?
 
 ## Deliverables we expect
 

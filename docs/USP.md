@@ -20,7 +20,7 @@ Vibe coders and beginners ship apps by prompting AI assistants. The assistant wr
    - **Guided:** one obvious way to do each task, `llms.txt` (the complete API in one file) and `AGENTS.md`, so Claude Code, Cursor, Copilot and Codex write correct IbuJS from the first prompt.
    - **Guarded:** `ibu ai` changes are restricted to your source files, security-linted and shown to you before anything is written.
    - **Self-correcting:** after writing, `ibu ai` runs the TypeScript compiler, `ibu check` and (with `--test`) your tests, and sends failures back to Claude in the same conversation until they pass or the round limit is hit. `--branch` puts the result on its own git branch.
-   - **Built in:** `ibu ai`, `ibu review` and `ibu explain --ai` work out of the box, and `@ibujs/ai` adds streaming AI features to *your* app with the key kept server-side and cost limits applied.
+   - **Built in:** `ibu ai`, `ibu review` and `ibu explain --ai` work out of the box, and `@ibumomujs/ai` adds streaming AI features to *your* app with the key kept server-side and cost limits applied.
 3. **Beginner-first.**
    - Every error has a code (`IBU412`) with a plain-English cause and fix, offline (`npx ibu explain IBU412`).
    - Shortcuts for the common cases: `bind={signal}` two-way inputs, `{count}` renders a signal, `resource()` loads data.

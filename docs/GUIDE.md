@@ -27,7 +27,7 @@ The page talks to the server with `api.get('/api/notes')`, `api.post('/api/notes
 ## 3. State that updates the page: signals
 
 ```tsx
-import { signal, computed } from '@ibujs/ui';
+import { signal, computed } from '@ibumomujs/ui';
 
 const name = signal('');
 const greeting = computed(() => name.value ? `Hello, ${name.value}!` : 'Type your name');
@@ -62,7 +62,7 @@ Create the table once at startup: `await db.raw('CREATE TABLE IF NOT EXISTS todo
 ## 5. Add login
 
 ```ts
-import { createSessionManager, hashPassword, verifyPassword, rateLimit, HttpError, s } from '@ibujs/server';
+import { createSessionManager, hashPassword, verifyPassword, rateLimit, HttpError, s } from '@ibumomujs/server';
 
 const sessions = createSessionManager({ secret: process.env.SESSION_SECRET! });  // already in .env
 await db.raw('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL)');
@@ -98,7 +98,7 @@ app.get('/api/me', async ctx => {
 Sessions say *who* someone is. A policy says *what* they may do. Anything you don't list is denied, so forgetting a rule fails safe.
 
 ```ts
-import { definePolicy, owner, role, anyOf, actorFromSession } from '@ibujs/server';
+import { definePolicy, owner, role, anyOf, actorFromSession } from '@ibumomujs/server';
 
 type Todo = { id: number; owner_id: number; title: string };
 const todos = definePolicy<Todo>({

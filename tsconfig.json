@@ -6,7 +6,7 @@
     "strict": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "@ibujs/ui",
+    "jsxImportSource": "@ibumomujs/ui",
     "lib": [
       "ES2022",
       "DOM",

@@ -16,7 +16,7 @@ test('every security rule fires on the mistake it targets', () => {
     ['IBU701', server, "const key = 'sk-ant-api03-abcdefghijklmnopqrstuvwx';"],
     ['IBU701', server, "const config = { apiKey: 'AbC123xYz987QwErTy' };"],
     ['IBU702', client, 'const key = process.env.ANTHROPIC_API_KEY;'],
-    ['IBU702', client, "import { createAI } from '@ibujs/ai';"],
+    ['IBU702', client, "import { createAI } from '@ibumomujs/ai';"],
     ['IBU703', client, 'el.innerHTML = comment;'],
     ['IBU704', server, 'const result = eval(userInput);'],
     ['IBU704', client, "setTimeout('refresh()', 100);"],
@@ -82,6 +82,6 @@ test('ibu create: a random secret that stays out of git and Vercel uploads', asy
   assert.deepEqual(JSON.parse(await read('vercel.json')), { framework: null, buildCommand: 'npm run build:vercel' });
   const pkg = JSON.parse(await read('package.json'));
   assert.equal(pkg.scripts['build:vercel'], 'ibu build --target=vercel');
-  assert.match(pkg.dependencies['@ibujs/ui'], /^\^\d+\.\d+\.\d+$/);
+  assert.match(pkg.dependencies['@ibumomujs/ui'], /^\^\d+\.\d+\.\d+$/);
   await rm(dir, { recursive: true, force: true });
 });

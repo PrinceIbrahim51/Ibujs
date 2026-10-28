@@ -1,5 +1,5 @@
 // Builds demo/index.html: one self-contained file (no server, works from file://) that runs
-// the real @ibujs/ui engine. Usage: npm run demo
+// the real @ibumomujs/ui engine. Usage: npm run demo
 import { build } from 'esbuild';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -13,7 +13,7 @@ const result = await build({
   format: 'iife',
   target: ['es2022'],
   jsx: 'automatic',
-  jsxImportSource: '@ibujs/ui',
+  jsxImportSource: '@ibumomujs/ui',
   define: { 'process.env.NODE_ENV': '"production"' }
 });
 const css = await readFile(new URL('demo/src/demo.css', root), 'utf8');

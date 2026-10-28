@@ -9,7 +9,7 @@ const cliRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const frameworkRoot = resolve(cliRoot, '../..');
 const template = join(cliRoot, 'template');
 // True when running from the IbuJS source repository (or an app that vendors it); false when
-// @ibujs/cli was installed from npm.
+// @ibumomujs/cli was installed from npm.
 const hasSource = existsSync(join(frameworkRoot, 'packages', 'ui', 'src', 'index.ts'));
 
 export const newSecret = () => randomBytes(32).toString('base64url');
@@ -22,7 +22,7 @@ export async function create(name, cwd, { mode } = {}) {
   if (existsSync(dest)) throw new Error(`A folder named "${name}" already exists here.`);
   const version = JSON.parse(await readFile(join(cliRoot, 'package.json'), 'utf8')).version;
   const vendor = mode === 'npm' ? false : mode === 'vendor' ? true : hasSource;
-  if (vendor && !hasSource) throw new Error('--vendor needs the IbuJS source repository. Installed from npm, new apps use the published @ibujs packages.');
+  if (vendor && !hasSource) throw new Error('--vendor needs the IbuJS source repository. Installed from npm, new apps use the published @ibumomujs packages.');
   await mkdir(dest, { recursive: true });
 
   if (vendor) {
@@ -54,15 +54,15 @@ export async function create(name, cwd, { mode } = {}) {
       doctor: 'ibu doctor'
     },
     // With vendoring, "*" always resolves to the workspace copies in packages/.
-    dependencies: { '@ibujs/ai': range, '@ibujs/server': range, '@ibujs/ui': range },
-    devDependencies: { '@ibujs/cli': range, '@types/node': '^22.20.5', typescript: '^5.9.3' },
+    dependencies: { '@ibumomujs/ai': range, '@ibumomujs/server': range, '@ibumomujs/ui': range },
+    devDependencies: { '@ibumomujs/cli': range, '@types/node': '^22.20.5', typescript: '^5.9.3' },
     engines: { node: '>=22.13' }
   }, null, 2) + '\n');
   await write('ibu.config.json', JSON.stringify({ client: 'src/main.tsx', server: 'src/server.ts', html: 'index.html' }, null, 2) + '\n');
   await write('tsconfig.json', JSON.stringify({
     compilerOptions: {
       target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', strict: true, noEmit: true,
-      jsx: 'react-jsx', jsxImportSource: '@ibujs/ui', lib: ['ES2022', 'DOM', 'DOM.Iterable'], types: ['node'],
+      jsx: 'react-jsx', jsxImportSource: '@ibumomujs/ui', lib: ['ES2022', 'DOM', 'DOM.Iterable'], types: ['node'],
       skipLibCheck: true, allowImportingTsExtensions: true
     },
     include: ['src']

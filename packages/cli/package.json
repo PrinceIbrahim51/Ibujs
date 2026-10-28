@@ -1,5 +1,5 @@
 {
-  "name": "@ibujs/cli",
+  "name": "@ibumomujs/cli",
   "version": "0.7.0",
   "description": "IbuJS command line: create, dev, build, start, check, ai, review, explain, doctor",
   "license": "MIT",

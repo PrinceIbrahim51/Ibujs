@@ -14,7 +14,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const out = join(root, '.release');
 const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
 const repository = 'https://github.com/PrinceIbrahim51/Ibujs';
-const PACKAGES = ['ui', 'server', 'ai', 'cli', 'create-ibujs'];
+const PACKAGES = ['ui', 'server', 'ai', 'cli', 'create-ibumomujs'];
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const sh = (cmd, args, cwd = root) => execFileSync(cmd, args, { cwd, stdio: 'pipe', encoding: 'utf8' });
 
@@ -23,7 +23,7 @@ const READMES = {
   server: 'Server: routing, typed validation, CSRF/CORS, sessions, scrypt passwords, authorization policies, SQL tag + SQLite, static files, SSR.',
   ai: 'Server-only Claude helpers (ask, stream, route) with rate, size, concurrency and disconnect guards.',
   cli: 'The `ibu` command: create, dev, build (also --target=vercel), start, check, ai, review, explain, secret, doctor.',
-  'create-ibujs': 'Create a new IbuJS app.'
+  'create-ibumomujs': 'Create a new IbuJS app.'
 };
 
 rmSync(out, { recursive: true, force: true });
@@ -44,7 +44,7 @@ const rewriteExports = exports => Object.fromEntries(Object.entries(exports).map
   return [key, { types: `${base}.d.ts`, default: `${base}.js` }];
 }));
 const pinWorkspaceDeps = deps => deps && Object.fromEntries(Object.entries(deps).map(([dep, range]) =>
-  [dep, dep.startsWith('@ibujs/') ? `^${version}` : range]));
+  [dep, dep.startsWith('@ibumomujs/') ? `^${version}` : range]));
 
 for (const name of PACKAGES) {
   const source = join(root, 'packages', name);
@@ -65,7 +65,7 @@ for (const name of PACKAGES) {
   }
   if (name === 'cli') { cpSync(join(root, 'llms.txt'), join(target, 'llms.txt')); files.push('llms.txt'); }
   cpSync(join(root, 'LICENSE'), join(target, 'LICENSE'));
-  writeFileSync(join(target, 'README.md'), `# ${manifest.name}\n\n${READMES[name]}\n\nPart of [IbuJS](${repository}), the secure-by-default, AI-native full-stack TypeScript framework.\n\n\`\`\`bash\nnpm create ibujs@latest my-app\n\`\`\`\n\nDocs: ${repository}#readme · Security: ${repository}/blob/HEAD/SECURITY.md\n`);
+  writeFileSync(join(target, 'README.md'), `# ${manifest.name}\n\n${READMES[name]}\n\nPart of [IbuJS](${repository}), the secure-by-default, AI-native full-stack TypeScript framework.\n\n\`\`\`bash\nnpm create ibumomujs@latest my-app\n\`\`\`\n\nDocs: ${repository}#readme · Security: ${repository}/blob/HEAD/SECURITY.md\n`);
   const published = {
     ...manifest,
     ...(manifest.exports ? { exports: rewriteExports(manifest.exports) } : {}),
@@ -87,16 +87,16 @@ console.log(`✔ Packed ${tarballs.length} packages into .release/: ${tarballs.j
 
 if (process.argv.includes('--verify')) {
   // Proves the published artifacts work on their own: create an app with the packed CLI in npm
-  // mode, install every @ibujs package from the tarballs, then typecheck, check, build and run it.
+  // mode, install every @ibumomujs package from the tarballs, then typecheck, check, build and run it.
   const dir = mkdtempSync(join(tmpdir(), 'ibu-release-'));
   try {
     sh(process.execPath, [join(out, 'cli', 'src', 'cli.mjs'), 'create', 'release-check', '--npm'], dir);
     const app = join(dir, 'release-check');
     const tgz = name => join(out, tarballs.find(t => t.startsWith(name.replace('@', '').replace('/', '-') + '-')));
     const pkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'));
-    const local = Object.fromEntries(['@ibujs/ui', '@ibujs/server', '@ibujs/ai', '@ibujs/cli'].map(n => [n, `file:${tgz(n)}`]));
-    for (const n of ['@ibujs/ui', '@ibujs/server', '@ibujs/ai']) pkg.dependencies[n] = local[n];
-    pkg.devDependencies['@ibujs/cli'] = local['@ibujs/cli'];
+    const local = Object.fromEntries(['@ibumomujs/ui', '@ibumomujs/server', '@ibumomujs/ai', '@ibumomujs/cli'].map(n => [n, `file:${tgz(n)}`]));
+    for (const n of ['@ibumomujs/ui', '@ibumomujs/server', '@ibumomujs/ai']) pkg.dependencies[n] = local[n];
+    pkg.devDependencies['@ibumomujs/cli'] = local['@ibumomujs/cli'];
     pkg.overrides = local;
     writeFileSync(join(app, 'package.json'), JSON.stringify(pkg, null, 2));
     console.log('Installing the packed packages into a fresh app…');

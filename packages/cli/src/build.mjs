@@ -26,7 +26,7 @@ function requireEntry(root, config, key) {
 const serverOnlyGuard = {
   name: 'ibu-server-only-guard',
   setup(build) {
-    build.onResolve({ filter: /^(?:@ibujs\/(?:server|ai)|@anthropic-ai\/sdk|node:.*|fs|child_process|crypto)$/ }, args => ({
+    build.onResolve({ filter: /^(?:@ibumomujs\/(?:server|ai)|@anthropic-ai\/sdk|node:.*|fs|child_process|crypto)$/ }, args => ({
       errors: [{ text: `[IBU702] Browser code imports "${args.path}", which is server-only and could expose secrets. Move this code to your server and call it through an API route.` }]
     }));
   }
@@ -41,7 +41,7 @@ function clientOptions(root, config, production) {
     format: 'esm',
     target: ['es2022'],
     jsx: 'automatic',
-    jsxImportSource: '@ibujs/ui',
+    jsxImportSource: '@ibumomujs/ui',
     minify: production,
     sourcemap: !production,
     define: { 'process.env.NODE_ENV': JSON.stringify(production ? 'production' : 'development') },
@@ -130,7 +130,7 @@ export async function build(root, { target } = {}) {
       format: 'esm',
       target: 'node22',
       jsx: 'automatic',
-      jsxImportSource: '@ibujs/ui',
+      jsxImportSource: '@ibumomujs/ui',
       external: config.external,
       sourcemap: true,
       // Lets bundled CommonJS dependencies use require() inside the ES module output.

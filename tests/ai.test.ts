@@ -25,8 +25,8 @@ function runCli(cwd: string, args: string[], env: Record<string, string>): Promi
 async function tempProject() {
   const dir = await mkdtemp(join(tmpdir(), 'ibu-ai-'));
   await mkdir(join(dir, 'src'));
-  await writeFile(join(dir, 'src', 'main.tsx'), "import { createApp } from '@ibujs/ui';\ncreateApp(() => <p>hi</p>, '#app');\n");
-  await writeFile(join(dir, 'src', 'server.ts'), "import { createServer } from '@ibujs/server';\nconst app = createServer();\napp.listen(3000);\n");
+  await writeFile(join(dir, 'src', 'main.tsx'), "import { createApp } from '@ibumomujs/ui';\ncreateApp(() => <p>hi</p>, '#app');\n");
+  await writeFile(join(dir, 'src', 'server.ts'), "import { createServer } from '@ibumomujs/server';\nconst app = createServer();\napp.listen(3000);\n");
   await writeFile(join(dir, 'index.html'), '<!doctype html><div id="app"></div><script type="module" src="/app.js"></script>');
   await writeFile(join(dir, 'ibu.config.json'), '{}');
   return dir;
@@ -110,7 +110,7 @@ test('ibu explain and ibu check work offline', async () => {
     assert.match(explain.out, /IBU412: Cross-site request blocked \(CSRF protection\)/);
     assert.match(explain.out, /Fix:/);
     assert.equal((await runCli(dir, ['check'], {})).code, 0);
-    await writeFile(join(dir, 'src', 'server.ts'), "import { createServer } from '@ibujs/server';\nconst key = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789';\nconst rows = await db.raw(`SELECT * FROM users WHERE id = ${id}`);\n");
+    await writeFile(join(dir, 'src', 'server.ts'), "import { createServer } from '@ibumomujs/server';\nconst key = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789';\nconst rows = await db.raw(`SELECT * FROM users WHERE id = ${id}`);\n");
     await writeFile(join(dir, '.env'), 'X=1');
     const check = await runCli(dir, ['check'], {});
     assert.equal(check.code, 1);
@@ -120,7 +120,7 @@ test('ibu explain and ibu check work offline', async () => {
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
-test('@ibujs/ai route: streams answers, validates input, limits abuse, stops billing on disconnect', async () => {
+test('@ibumomujs/ai route: streams answers, validates input, limits abuse, stops billing on disconnect', async () => {
   let reply = { text: 'Hello from Claude, streamed in pieces.', chunkSize: 5 } as { text: string; chunkSize?: number; stopReason?: string; delayMs?: number };
   const mock = await mockAnthropic(() => reply);
   const ai = createAI({ client: new Anthropic({ baseURL: mock.url, apiKey: 'test-key' }), system: 'Be brief.' });

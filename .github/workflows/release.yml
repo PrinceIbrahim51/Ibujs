@@ -1,4 +1,4 @@
-# Publishes all @ibujs packages (and create-ibujs) to npm when a tag like v0.7.0 is pushed.
+# Publishes all @ibumomujs packages (and create-ibumomujs) to npm when a tag like v0.7.0 is pushed.
 # Uses npm trusted publishing (OIDC): no long-lived npm token is stored. Every release gets a
 # provenance statement linking the package to this repository, workflow and commit.
 # One-time setup: see docs/RELEASING.md.
@@ -32,6 +32,6 @@ jobs:
           # Only needed if npm requires a token for a package's very first publish; leave unset otherwise.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          for pkg in ui server ai cli create-ibujs; do
+          for pkg in ui server ai cli create-ibumomujs; do
             npm publish ".release/$pkg" --provenance --access public
           done

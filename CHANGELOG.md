@@ -7,11 +7,13 @@
 - **Authorization (server):** `definePolicy`, `owner`, `role`, `loggedIn`, `anyOf`, `allOf`, `actorFromSession`. Deny by default, async rules, `can` / `authorize` (401, 403 `IBU506`, or 404 with `{ hide: true }`) / `filter`.
 - **`ibu ai` agent loop:** after applying a change it runs `tsc --noEmit` and `ibu check` (and `npm test` with `--test`), sends failures back to Claude in the same conversation and applies the fixes, up to `--fix-rounds=N` (default 2). `--branch[=name]` works on a new git branch and commits only the generated files. `--no-verify` turns the checks off.
 - **Deploy to Vercel:** `ibu build --target=vercel` writes `.vercel/output` (Build Output API v3: static files on the CDN with the same security headers, the server as one streaming Node function). New apps get a `vercel.json`, a `build:vercel` script and a `.vercelignore` that keeps `.env` and database files out of `vercel deploy` uploads. The framework's own starter runs at https://ibujs.vercel.app.
-- **npm packaging:** `npm run release` builds compiled `.js` + `.d.ts` packages into `.release/` (`--verify` installs the tarballs into a fresh app and runs it); `.github/workflows/release.yml` publishes on `v*` tags with trusted publishing and provenance; new `create-ibujs` package (`npx create-ibujs my-app`); `ibu create --npm` / `--vendor`.
+- **npm packaging:** `npm run release` builds compiled `.js` + `.d.ts` packages into `.release/` (`--verify` installs the tarballs into a fresh app and runs it); `.github/workflows/release.yml` publishes on `v*` tags with trusted publishing and provenance; new `create-ibumomujs` package (`npx create-ibumomujs my-app`); `ibu create --npm` / `--vendor`.
 - **Security assurance:** seeded property-based fuzz tests (`tests/fuzz.test.ts`), a Node-vs-Chromium URL differential test, `docs/THREAT-MODEL.md`, `docs/SECURITY-REVIEW-SCOPE.md`, CodeQL and Dependabot.
 - Error codes `IBU206`, `IBU506`, `IBU507`, `IBU604`, `IBU904`.
 
 ### Changed
+- **npm names:** the packages are `@ibumomujs/ui`, `@ibumomujs/server`, `@ibumomujs/ai`, `@ibumomujs/cli` and `create-ibumomujs` (the `ibujs` npm organization was not available). Imports change from `@ibujs/*` to `@ibumomujs/*`; the IbuJS name, the `ibu` command and error codes are unchanged.
+- The demo page and the starter app show one clear instruction per page instead of longer explanations.
 - The UI runtime is 6.3 KB gzipped (was 5.1 KB).
 - `trustProxy` defaults to one hop when running on Vercel (`VERCEL=1`).
 - `app.listen()` does not open a port when `IBU_SERVERLESS=1` (set by the Vercel entry); it registers the handler instead.
@@ -30,7 +32,7 @@ A security-focused rebuild after a full audit of 0.5 (see `docs/SECURITY-AUDIT.m
 ### Added
 - **UI:** `computed`, auto-tracking `effect`, `batch`, `untrack`, `resource`, `nextTick`; `bind={signal}`; `ref`; `class` arrays/objects; style objects with automatic `px`; SVG; signals as children; router `Link`, hash mode, `base`, wildcards, `query()`; `api.get/post/put/patch/delete/stream` with timeouts and `ApiError`; `renderToString`, `html```, `SafeHtml`; `onSecurityViolation`; development error overlay.
 - **Server:** typed `s` validator and `ctx.body(schema)`; `HttpError`; `ctx.text/html/empty/redirect/cookies/query/ip/secure/state`; route-level middleware; HEAD and 405; built-in CSRF protection, CORS, request ids, security headers and timeouts; `trustProxy`; `logger()`; `serveStatic()` and `publicDir()`; `sql``` / `createDatabase` / `sqliteDatabase`; session `login/logout/require/middleware`, key rotation, revocation; `needsRehash`; `renderPage`.
-- **AI:** `@ibujs/ai` (`createAI`, `ask`, `stream`, `route`); CLI `ibu ai`, `ibu review`, `ibu explain [--ai]`; `llms.txt`, `AGENTS.md`, `CLAUDE.md`.
+- **AI:** `@ibumomujs/ai` (`createAI`, `ask`, `stream`, `route`); CLI `ibu ai`, `ibu review`, `ibu explain [--ai]`; `llms.txt`, `AGENTS.md`, `CLAUDE.md`.
 - **CLI:** `ibu check`, `ibu doctor`, `ibu secret`, `ibu.config.json`; `ibu create` generates a standalone app with a random `SESSION_SECRET`.
 - Error catalog: every error has an `IBUxxx` code.
 - Tests: 49 unit/integration tests, a Chromium XSS suite, CI on Node 22 and 24.

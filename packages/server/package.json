@@ -1,5 +1,5 @@
 {
-  "name": "@ibujs/server",
+  "name": "@ibumomujs/server",
   "version": "0.7.0",
   "description": "IbuJS server: secure-by-default HTTP, validation, sessions, SQL and static files",
   "license": "MIT",
@@ -8,6 +8,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@ibujs/ui": "*"
+    "@ibumomujs/ui": "*"
   }
 }

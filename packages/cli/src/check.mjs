@@ -16,7 +16,7 @@ export const RULES = [
   ] },
   { id: 'IBU702', severity: 'error', scope: 'client', message: 'Server secret or server-only module used in browser code', patterns: [
     /process\.env\.(?!NODE_ENV\b)\w+/, /import\.meta\.env\.\w*(?:KEY|SECRET|TOKEN|PASSWORD)/i,
-    /from\s+['"](?:@ibujs\/(?:ai|server)|@anthropic-ai\/sdk|openai)['"]/, /import\(\s*['"](?:@ibujs\/(?:ai|server)|@anthropic-ai\/sdk)['"]\s*\)/
+    /from\s+['"](?:@ibumomujs\/(?:ai|server)|@anthropic-ai\/sdk|openai)['"]/, /import\(\s*['"](?:@ibumomujs\/(?:ai|server)|@anthropic-ai\/sdk)['"]\s*\)/
   ] },
   { id: 'IBU703', severity: 'error', scope: 'any', message: 'Raw HTML sink (XSS risk)', patterns: [
     /\.(?:innerHTML|outerHTML)\s*\+?=(?!=)/, /\binsertAdjacentHTML\s*\(/, /\bdocument\.write(?:ln)?\s*\(/, /dangerouslySetInnerHTML/, /\bsrcdoc\s*[=:]/
@@ -52,11 +52,11 @@ const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', 'coverage', 'packages']);
 
 // Decides whether a file runs in the browser, on the server, or could be either.
-// Browser signals win over server imports: a .tsx file importing @ibujs/ai is exactly the leak to catch.
+// Browser signals win over server imports: a .tsx file importing @ibumomujs/ai is exactly the leak to catch.
 export function fileKind(path, text) {
   if (/(^|[\\/])(server|api|backend)([\\/.]|$)/i.test(path)) return 'server';
-  if (/\.(?:tsx|jsx)$/.test(path) || /from\s+['"]@ibujs\/ui['"]/.test(text)) return 'client';
-  if (/from\s+['"](?:@ibujs\/(?:server|ai)|node:)/.test(text)) return 'server';
+  if (/\.(?:tsx|jsx)$/.test(path) || /from\s+['"]@ibumomujs\/ui['"]/.test(text)) return 'client';
+  if (/from\s+['"](?:@ibumomujs\/(?:server|ai)|node:)/.test(text)) return 'server';
   return 'any';
 }
 

@@ -5,14 +5,14 @@ Releases are built and published by `.github/workflows/release.yml` when you pus
 1. checks the tag matches `package.json`'s version,
 2. runs `npm run check` (typecheck, tests, security check, build),
 3. runs `node scripts/release.mjs --verify`, which compiles the packages to JavaScript + type declarations in `.release/`, packs them, creates a fresh app from the packed tarballs and builds and runs it,
-4. publishes `@ibujs/ui`, `@ibujs/server`, `@ibujs/ai`, `@ibujs/cli` and `create-ibujs` with **provenance** (a signed statement, shown on npmjs.com, that each package was built from this repository by this workflow).
+4. publishes `@ibumomujs/ui`, `@ibumomujs/server`, `@ibumomujs/ai`, `@ibumomujs/cli` and `create-ibumomujs` with **provenance** (a signed statement, shown on npmjs.com, that each package was built from this repository by this workflow).
 
 It uses npm **trusted publishing** (GitHub OIDC): no long-lived npm token is stored in GitHub. It needs npm 11.5.1+ (installed by the workflow) and GitHub-hosted runners.
 
 ## One-time setup
 
 1. **npm account**: create one at npmjs.com and turn on two-factor authentication.
-2. **Claim the names**: create the npm organization `ibujs` (this reserves the `@ibujs/` scope). `create-ibujs` is an unscoped name; as of 2026-10-27 none of the names were published, but check again. If `ibujs` is taken, pick another scope and rename the packages (`packages/*/package.json` and imports).
+2. **Names**: the packages are published under the npm organization `ibumomujs` (scope `@ibumomujs/`), because `ibujs` was not available. `create-ibumomujs` is an unscoped name; it was free on 2026-10-28, so publish it soon to keep it. To move to another scope later, replace `@ibumomujs/` everywhere (`git grep -l @ibumomujs/`) and rename `packages/create-ibumomujs`.
 3. **GitHub environment**: in this repository, Settings → Environments → New environment → `npm`. Add yourself as a required reviewer if you want to approve each release by hand.
 4. **Trusted publishers**: for each of the five packages on npmjs.com, open Settings → Trusted publishing → GitHub Actions and enter: owner `PrinceIbrahim51`, repository `Ibujs`, workflow `release.yml`, environment `npm`.
    - npm may only let you configure this for a package that already exists. If so, do the **first** release with a token: create a granular access token with publish rights for the packages, save it as the `NPM_TOKEN` secret in the `npm` environment, push the tag, then configure trusted publishing and **delete the token and the secret**. Later releases need no token.

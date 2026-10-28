@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual, type ScryptOptions } from 'node:crypto';
-import { IbuError } from '@ibujs/ui';
+import { IbuError } from '@ibumomujs/ui';
 import { HttpError, type Context, type Middleware } from './app.js';
 
 const scrypt = (password: string | Buffer, salt: Buffer, keylen: number, options: ScryptOptions) =>

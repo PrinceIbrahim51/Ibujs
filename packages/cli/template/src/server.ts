@@ -1,5 +1,5 @@
-import { createServer, logger, rateLimit, serveStatic, publicDir, sqliteDatabase, s, HttpError } from '@ibujs/server';
-import { createAI } from '@ibujs/ai';
+import { createServer, logger, rateLimit, serveStatic, publicDir, sqliteDatabase, s, HttpError } from '@ibumomujs/server';
+import { createAI } from '@ibumomujs/ai';
 
 const app = createServer();
 app.use(logger());

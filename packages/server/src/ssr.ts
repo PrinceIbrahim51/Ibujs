@@ -1,5 +1,5 @@
-import { html, isSafeHtml, isSafeUrl, renderToString, IbuError, type Child, type SafeHtml } from '@ibujs/ui';
-export { html, escapeHtml, renderToString, isSafeHtml, SafeHtml } from '@ibujs/ui';
+import { html, isSafeHtml, isSafeUrl, renderToString, IbuError, type Child, type SafeHtml } from '@ibumomujs/ui';
+export { html, escapeHtml, renderToString, isSafeHtml, SafeHtml } from '@ibumomujs/ui';
 
 export interface PageOptions {
   title: string;

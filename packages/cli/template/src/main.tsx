@@ -1,4 +1,4 @@
-import { createApp, createRouter, signal, computed, effect, resource, api, ApiError } from '@ibujs/ui';
+import { createApp, createRouter, signal, computed, effect, resource, api, ApiError } from '@ibumomujs/ui';
 import './style.css';
 
 type Note = { id: number; text: string; created_at: string };
@@ -10,7 +10,8 @@ const doubled = computed(() => count.value * 2);
 function Counter() {
   return (
     <section class="panel">
-      <h2>Reactive counter</h2>
+      <h2>Counter</h2>
+      <p class="muted">Click Increase and watch both numbers update.</p>
       <p class="count">{count}</p>
       <p class="muted">Doubled: {doubled}</p>
       <button onClick={() => count.value++}>Increase +1</button>
@@ -45,10 +46,10 @@ function Notes() {
   return (
     <section class="panel">
       <h2>Notes</h2>
-      <p class="muted">Saved in a real database. Try typing &lt;script&gt;alert(1)&lt;/script&gt; — it is shown as plain text.</p>
+      <p class="muted">Write a note and press Add: it is saved in the database.</p>
       <form class="row" onSubmit={addNote}>
         <input bind={draft} placeholder="Write a note" maxlength="500" aria-label="New note" />
-        <button disabled={!draft.value.trim()}>Add note</button>
+        <button disabled={!draft.value.trim()}>Add</button>
       </form>
       {notesError.value && <p class="error" role="alert">{notesError}</p>}
       {notes.loading.value && <p class="muted">Loading…</p>}
@@ -88,6 +89,7 @@ function Ask() {
   return (
     <section class="panel">
       <h2>Ask AI</h2>
+      <p class="muted">Type a question and press Ask.</p>
       <form class="row" onSubmit={ask}>
         <input bind={question} placeholder="Ask anything" maxlength="2000" aria-label="Question" />
         <button disabled={asking.value}>{asking.value ? 'Thinking…' : 'Ask'}</button>
@@ -97,25 +99,10 @@ function Ask() {
   );
 }
 
-function About() {
-  return (
-    <section class="panel">
-      <h2>What is included?</h2>
-      <ul>
-        <li>Signals, JSX and a renderer that blocks XSS by default</li>
-        <li>Routing, data loading and a safe fetch helper</li>
-        <li>A server with validation, CSRF protection, rate limits, sessions and SQLite</li>
-        <li>AI helpers that keep your API key on the server</li>
-      </ul>
-    </section>
-  );
-}
-
 const router = createRouter([
   { path: '/', component: Counter },
   { path: '/notes', component: Notes },
-  { path: '/ask', component: Ask },
-  { path: '/about', component: About }
+  { path: '/ask', component: Ask }
 ], () => <section class="panel"><h2>Page not found</h2></section>);
 const { Link } = router;
 
@@ -129,12 +116,11 @@ function App() {
     <main class="shell">
       <span class="pill">IBUJS</span>
       <h1>Build your own web.</h1>
-      <p>Full-stack TypeScript + JSX, secure by default.</p>
+      <p>Try each tab, then edit src/main.tsx to make it your own.</p>
       <nav>
         <Link href="/">Counter</Link>
         <Link href="/notes">Notes</Link>
         <Link href="/ask">Ask AI</Link>
-        <Link href="/about">About</Link>
       </nav>
       {router.view()}
     </main>

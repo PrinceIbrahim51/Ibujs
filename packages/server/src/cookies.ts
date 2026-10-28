@@ -1,4 +1,4 @@
-import { IbuError } from '@ibujs/ui';
+import { IbuError } from '@ibumomujs/ui';
 
 export interface CookieOptions {
   maxAge?: number;

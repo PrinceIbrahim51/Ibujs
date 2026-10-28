@@ -6,7 +6,7 @@
 
 ```tsx
 // src/main.tsx (browser)
-import { createApp, signal, resource, api } from '@ibujs/ui';
+import { createApp, signal, resource, api } from '@ibumomujs/ui';
 
 const notes = resource(() => api.get<{ id: number; text: string }[]>('/api/notes'));
 const draft = signal('');
@@ -25,7 +25,7 @@ createApp(App, '#app');
 
 ```ts
 // src/server.ts (server)
-import { createServer, s, serveStatic, publicDir, sqliteDatabase } from '@ibujs/server';
+import { createServer, s, serveStatic, publicDir, sqliteDatabase } from '@ibumomujs/server';
 
 const app = createServer();                        // CSRF protection, security headers, CSP, timeouts: on
 const db = await sqliteDatabase('data.db');        // built-in SQLite, nothing to install
@@ -57,7 +57,7 @@ Create your own app:
 
 ```bash
 node packages/cli/src/cli.mjs create my-app && cd my-app && npm install && npm run dev   # from this repo (framework copied in, works offline)
-npx create-ibujs my-app                                                                     # once the packages are on npm
+npx create-ibumomujs my-app                                                                     # once the packages are on npm
 ```
 
 Every new app includes a `vercel.json`: push it to GitHub, import it on Vercel, add `SESSION_SECRET` (and `ANTHROPIC_API_KEY` for AI) as environment variables, and it deploys.
@@ -71,7 +71,7 @@ No install at all: open `demo/index.html` in a browser. It runs the real engine,
 | | |
 |---|---|
 | 🔒 **Secure by default** | No raw-HTML API exists. Elements are Symbol-branded, so API data can't become markup. URLs are checked with the browser's own parser. CSRF, CSP and security headers are on. SQL only through tagged templates. The build fails if browser code imports server secrets. |
-| 🤖 **AI-native** | `llms.txt` + `AGENTS.md` steer Claude Code, Cursor, Copilot and Codex to correct code. `ibu ai "add a login page"` writes changes that are path-checked and security-linted, then typechecks them and has Claude fix its own mistakes before you see the result. `ibu review` does AI security reviews. `@ibujs/ai` adds streaming AI features with cost limits. |
+| 🤖 **AI-native** | `llms.txt` + `AGENTS.md` steer Claude Code, Cursor, Copilot and Codex to correct code. `ibu ai "add a login page"` writes changes that are path-checked and security-linted, then typechecks them and has Claude fix its own mistakes before you see the result. `ibu review` does AI security reviews. `@ibumomujs/ai` adds streaming AI features with cost limits. |
 | 🎓 **Beginner-first** | Every error has a code with a plain-English fix (`npx ibu explain IBU412`). Two-way `bind`, `resource()` for data, zero-config SQLite, a random secret generated for you, and `ibu doctor`. |
 | ⚡ **Small, full-stack** | UI runtime 6.3 KB gzipped (React 19: 67.3 KB, measured). Only components whose signals changed re-render; server-rendered pages hydrate. One project for browser, server, database and AI. |
 
@@ -81,11 +81,11 @@ Full comparison with React, Next.js, Vue, Node + Express and vanilla JS: **[docs
 
 | Package | Contents |
 |---|---|
-| `@ibujs/ui` | `signal`, `computed`, `effect`, `batch`, `resource`; JSX renderer with per-component updates, memoization, error isolation, keyed diffing, SVG, `bind`, refs; `hydrate`; `createRouter` + `Link`; `api()`; `renderToString` / `html```; dev error overlay |
-| `@ibujs/server` | Router with middleware, `ctx.body(schema)`, `HttpError`; `s` validator; sessions, scrypt passwords, cookies; `definePolicy` authorization (deny by default); CSRF, CORS, rate limits, logger; `db.sql```, SQLite adapter; `serveStatic`; `renderPage` |
-| `@ibujs/ai` | `createAI()`: `ask`, `stream`, `route()` for Claude, server-only, with rate, size, concurrency and disconnect guards |
-| `@ibujs/cli` | `ibu create · dev · build · start · check · ai · review · explain · secret · doctor`; `ibu build --target=vercel` |
-| `create-ibujs` | `npx create-ibujs my-app` |
+| `@ibumomujs/ui` | `signal`, `computed`, `effect`, `batch`, `resource`; JSX renderer with per-component updates, memoization, error isolation, keyed diffing, SVG, `bind`, refs; `hydrate`; `createRouter` + `Link`; `api()`; `renderToString` / `html```; dev error overlay |
+| `@ibumomujs/server` | Router with middleware, `ctx.body(schema)`, `HttpError`; `s` validator; sessions, scrypt passwords, cookies; `definePolicy` authorization (deny by default); CSRF, CORS, rate limits, logger; `db.sql```, SQLite adapter; `serveStatic`; `renderPage` |
+| `@ibumomujs/ai` | `createAI()`: `ask`, `stream`, `route()` for Claude, server-only, with rate, size, concurrency and disconnect guards |
+| `@ibumomujs/cli` | `ibu create · dev · build · start · check · ai · review · explain · secret · doctor`; `ibu build --target=vercel` |
+| `create-ibumomujs` | `npx create-ibumomujs my-app` |
 
 ## Commands
 

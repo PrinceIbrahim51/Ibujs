@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { HttpError, rateLimit, s, type Handler } from '@ibujs/server';
-import { IbuError } from '@ibujs/ui';
+import { HttpError, rateLimit, s, type Handler } from '@ibumomujs/server';
+import { IbuError } from '@ibumomujs/ui';
 
 // Server-only Claude helpers. Your API key stays on the server, and the public route has
 // input limits, per-IP rate limits, a concurrency cap and stops generating (and billing)
@@ -35,7 +35,7 @@ export const REFUSAL_NOTICE = '\n\n[The AI declined to answer this request.]';
 
 export function createAI(options: AIOptions = {}) {
   if (typeof window !== 'undefined') {
-    throw new IbuError('IBU801', '@ibujs/ai was loaded in the browser, which would expose your API key.', 'Use it in src/server.ts and call your route from the page with api.stream("/api/ask", { prompt }).');
+    throw new IbuError('IBU801', '@ibumomujs/ai was loaded in the browser, which would expose your API key.', 'Use it in src/server.ts and call your route from the page with api.stream("/api/ask", { prompt }).');
   }
   let client = options.client;
   const getClient = () => {

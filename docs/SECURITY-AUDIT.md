@@ -1,6 +1,6 @@
 # IbuJS security audit (v0.5 → v0.6, with a 0.7 addendum)
 
-**Scope:** the complete v0.5 upload (`@ibujs/ui`, `@ibujs/server`, `@ibujs/cli`, starter app, standalone demo, tests, CI) and every v0.6 change.
+**Scope:** the complete v0.5 upload (`@ibumomujs/ui`, `@ibumomujs/server`, `@ibumomujs/cli`, starter app, standalone demo, tests, CI) and every v0.6 change.
 **Date:** 2026-10-27. **Method:** manual code review, then each suspected issue reproduced against the *unmodified* v0.5 code (Chromium via Playwright for browser issues, real HTTP requests for server issues), fixed, and locked in with a regression test.
 
 Evidence key: **Reproduced (browser)** = attacker code actually executed in Chromium; **Reproduced (HTTP)** = observed with real requests; **Code review** = established by reading the code, not executed.
@@ -57,7 +57,7 @@ Plus 9 functional defects in v0.5, including two that stopped it from installing
 
 | ID | Defect | Evidence |
 |---|---|---|
-| D1 | `npm install` failed: the starter depended on `@ibujs/*@0.1.0` but the packages were `0.5.0`, so npm went to the public registry (404). | Reproduced |
+| D1 | `npm install` failed: the starter depended on `@ibumomujs/*@0.1.0` but the packages were `0.5.0`, so npm went to the public registry (404). | Reproduced |
 | D2 | `npm start` crashed: the server bundle kept workspace packages external, and Node cannot import their `.ts` sources from `node_modules`. | Reproduced (`ERR_MODULE_NOT_FOUND`) |
 | D3 | The starter located assets with `new URL('../../../', import.meta.url)`, which points outside the project once bundled to `dist/server.mjs`. | Code review |
 | D4 | Inputs did not clear after "Add note": `value` was set as an attribute, not the live property. | Reproduced (browser) |

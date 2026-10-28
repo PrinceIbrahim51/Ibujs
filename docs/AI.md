@@ -48,12 +48,12 @@ npx ibu review src/server.ts               # review specific files
 
 `ibu review` sends your files and the offline `ibu check` findings to Claude with a reviewer prompt that ranks real problems by severity and gives fixes in IbuJS terms. It never writes files.
 
-## 3. AI features in your app (`@ibujs/ai`)
+## 3. AI features in your app (`@ibumomujs/ai`)
 
 Server (`src/server.ts`):
 
 ```ts
-import { createAI } from '@ibujs/ai';
+import { createAI } from '@ibumomujs/ai';
 
 const ai = createAI({ system: 'You are a friendly cooking assistant. Answer briefly.' });
 app.post('/api/ask', ai.route());                    // streaming chat endpoint
@@ -77,7 +77,7 @@ What `ai.route()` protects you from:
 
 | Risk | Protection |
 |---|---|
-| API key stolen from the page | The key only exists on the server; importing `@ibujs/ai` in browser code fails the build (`IBU702`) and throws at runtime (`IBU801`). |
+| API key stolen from the page | The key only exists on the server; importing `@ibumomujs/ai` in browser code fails the build (`IBU702`) and throws at runtime (`IBU801`). |
 | Someone runs up your bill | 10 requests/minute per visitor, 4 concurrent requests, 4,000-character inputs, 20-message histories, 4,096 output tokens (all configurable). |
 | Paying for answers nobody reads | The Claude request is cancelled when the visitor disconnects. |
 | Prompt override | Clients can only send `user`/`assistant` messages; the system prompt is fixed on the server. |

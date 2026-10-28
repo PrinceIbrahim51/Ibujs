@@ -1,6 +1,6 @@
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
-import { IbuError } from '@ibujs/ui';
+import { IbuError } from '@ibumomujs/ui';
 
 // SQL injection is impossible by construction: values in sql`...` are always sent to the database
 // separately from the query text, never pasted into it.

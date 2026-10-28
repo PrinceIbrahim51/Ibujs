@@ -4,8 +4,8 @@ This is an IbuJS app. Read `llms.txt` for the complete API before writing code. 
 
 ## Layout
 
-- `src/main.tsx`: browser code (@ibujs/ui). Never import @ibujs/server, @ibujs/ai, node:* or secrets here; the build fails if you do.
-- `src/server.ts`: server code (@ibujs/server, @ibujs/ai). API routes live under `/api/`.
+- `src/main.tsx`: browser code (@ibumomujs/ui). Never import @ibumomujs/server, @ibumomujs/ai, node:* or secrets here; the build fails if you do.
+- `src/server.ts`: server code (@ibumomujs/server, @ibumomujs/ai). API routes live under `/api/`.
 - `index.html`: page shell. No inline `<script>` or `style=""` (the Content-Security-Policy blocks them).
 - `.env`: secrets (git-ignored). Read with `process.env.NAME` on the server only.
 
@@ -18,7 +18,7 @@ This is an IbuJS app. Read `llms.txt` for the complete API before writing code. 
 5. Passwords: `hashPassword` / `verifyPassword`. Sessions: `createSessionManager({ secret: process.env.SESSION_SECRET! })` and `sessions.require(ctx)` on protected routes. Check that the logged-in user may touch the record: load it, then `await policy.authorize(actorFromSession(session), 'update', record)` with a policy from `definePolicy` (deny by default). Never trust an owner id sent by the browser.
 6. Redirect only to paths on this site (`ctx.redirect('/x')`). Do not set `allowExternal` with user input.
 7. Do not disable built-in protections (`csrf: false`, CORS `'*'`, `rejectUnauthorized: false`).
-8. AI features use `@ibujs/ai` on the server (`ai.route()`), and the page reads answers with `api.stream()`. Render AI output as text.
+8. AI features use `@ibumomujs/ai` on the server (`ai.route()`), and the page reads answers with `api.stream()`. Render AI output as text.
 
 ## Style
 

@@ -1,13 +1,13 @@
 # IbuJS
 
-> IbuJS is a small full-stack TypeScript + JSX framework that is secure by default and designed to be written by beginners and AI assistants. Browser code uses @ibujs/ui (signals + JSX); server code uses @ibujs/server (HTTP, validation, sessions, SQLite); AI features use @ibujs/ai (server-only Claude helpers). There is exactly one way to do each common task, and unsafe patterns either do not exist or throw an error with a code (IBUxxx) that `npx ibu explain IBUxxx` explains.
+> IbuJS is a small full-stack TypeScript + JSX framework that is secure by default and designed to be written by beginners and AI assistants. Browser code uses @ibumomujs/ui (signals + JSX); server code uses @ibumomujs/server (HTTP, validation, sessions, SQLite); AI features use @ibumomujs/ai (server-only Claude helpers). There is exactly one way to do each common task, and unsafe patterns either do not exist or throw an error with a code (IBUxxx) that `npx ibu explain IBUxxx` explains.
 
 Project layout: `src/main.tsx` (browser), `src/server.ts` (server), `index.html`, `ibu.config.json`. Commands: `npm run dev`, `npm run build`, `npm start`, `npx ibu check`, `npx ibu ai "<task>"`, `npx ibu review`, `npx ibu explain <code>`, `npx ibu secret`, `npx ibu doctor`.
 
-## Browser: @ibujs/ui
+## Browser: @ibumomujs/ui
 
 ```tsx
-import { createApp, hydrate, signal, computed, effect, batch, resource, createRouter, api, ApiError, nextTick } from '@ibujs/ui';
+import { createApp, hydrate, signal, computed, effect, batch, resource, createRouter, api, ApiError, nextTick } from '@ibumomujs/ui';
 
 const count = signal(0);                 // read/write with count.value; count.update(n => n + 1)
 const doubled = computed(() => count.value * 2);   // read-only, recomputed when count changes
@@ -71,10 +71,10 @@ History mode needs the server to send index.html for page URLs: `serveStatic(pub
 
 Server-side rendering: `renderToString(<App />)` returns escaped HTML (SafeHtml). `html\`<p>${text}</p>\`` escapes interpolations.
 
-## Server: @ibujs/server
+## Server: @ibumomujs/server
 
 ```ts
-import { createServer, s, HttpError, logger, rateLimit, serveStatic, publicDir, sqliteDatabase, createSessionManager, hashPassword, verifyPassword, renderPage, html } from '@ibujs/server';
+import { createServer, s, HttpError, logger, rateLimit, serveStatic, publicDir, sqliteDatabase, createSessionManager, hashPassword, verifyPassword, renderPage, html } from '@ibumomujs/server';
 
 const app = createServer();            // options: { trustProxy, maxBodyBytes, cors: { origins: [...] }, csrf, dev, onError }
 app.use(logger());
@@ -126,7 +126,7 @@ sessions.logout(ctx);
 
 Authorization (who may touch which record; everything not listed is denied):
 ```ts
-import { definePolicy, owner, role, loggedIn, anyOf, allOf, actorFromSession } from '@ibujs/server';
+import { definePolicy, owner, role, loggedIn, anyOf, allOf, actorFromSession } from '@ibumomujs/server';
 const notes = definePolicy<Note>({
   read: anyOf(owner('owner_id'), (user, note) => note.is_public === 1),
   update: owner('owner_id'),
@@ -145,16 +145,16 @@ Rules are `true`, `false`, `loggedIn` or `(actor, record) => boolean | Promise<b
 
 Pages from the server: `ctx.html(renderPage({ title, body: <App />, scripts: ['/app.js'], styles: ['/app.css'] }))`, then `hydrate(App, '#app')` in the browser.
 
-## AI: @ibujs/ai (server only)
+## AI: @ibumomujs/ai (server only)
 
 ```ts
-import { createAI } from '@ibujs/ai';
+import { createAI } from '@ibumomujs/ai';
 const ai = createAI({ system: 'You help users write recipes.' });   // reads ANTHROPIC_API_KEY; model claude-opus-5-5
 app.post('/api/ask', ai.route());                     // body { prompt } or { messages }; streams text; rate-limited, size-limited
 const text = await ai.ask('Summarise: ' + note.text); // whole answer
 for await (const chunk of ai.stream(prompt)) { ... }
 ```
-Options: `model`, `system`, `effort` ('low'…'max'), `maxTokens`; route options add `maxInputChars` (4000), `requestsPerMinute` (10), `maxConcurrent` (4). Never import @ibujs/ai in browser code (the build fails if you do).
+Options: `model`, `system`, `effort` ('low'…'max'), `maxTokens`; route options add `maxInputChars` (4000), `requestsPerMinute` (10), `maxConcurrent` (4). Never import @ibumomujs/ai in browser code (the build fails if you do).
 
 ## AI coding: `npx ibu ai "<task>"`
 
@@ -164,7 +164,7 @@ Claude edits the code, then the CLI typechecks and security-checks the result an
 
 - Any Node 22.13+ host: `npm run build && npm start` (set `PORT`, `HOST=0.0.0.0`, `NODE_ENV=production`).
 - Vercel: `ibu build --target=vercel` writes `.vercel/output` (static files on the CDN, `src/server.ts` as one function). New apps include a vercel.json for this (`npm run build:vercel`), so importing the repo on Vercel just works. Set secrets (ANTHROPIC_API_KEY, SESSION_SECRET) in the project's Environment Variables. SQLite files there are temporary (IBU604); use a hosted database for data that must last.
-- New apps: `npx create-ibujs my-app` (or `npx ibu create my-app --npm`); `--vendor` copies the framework source into the app.
+- New apps: `npx create-ibumomujs my-app` (or `npx ibu create my-app --npm`); `--vendor` copies the framework source into the app.
 
 ## Optional
 

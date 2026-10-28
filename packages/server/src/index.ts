@@ -6,5 +6,5 @@ export { requestIds, rateLimit, rateLimitKey, logger, type RateLimitOptions } fr
 export { sql, isSql, toText, createDatabase, sqliteDatabase, memoryDatabase, type SqlQuery, type DatabaseAdapter, type Database } from './db.js';
 export { serveStatic, publicDir, type StaticOptions } from './static.js';
 export { renderPage, renderDocument, html, escapeHtml, renderToString, isSafeHtml, SafeHtml, type PageOptions } from './ssr.js';
-export { IbuError } from '@ibujs/ui';
+export { IbuError } from '@ibumomujs/ui';
 export { definePolicy, owner, role, loggedIn, anyOf, allOf, actorFromSession, type Actor, type Rule } from './authz.js';
